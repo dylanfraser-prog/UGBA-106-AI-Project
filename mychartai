@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyChart AI — Network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:    #050608;
+  --ai:    #00e5c4;
+  --data:  #4a7fff;
+  --doc:   #5bc8ff;
+  --pat:   #d966ff;
+  --mono:  'Share Tech Mono', monospace;
+  --vt:    'VT323', monospace;
+  --read:  'DM Mono', monospace;
+  --text:  rgba(255,255,255,.85);
+  --muted: rgba(255,255,255,.28);
+  --faint: rgba(255,255,255,.06);
+}
+body { background: var(--bg); font-family: var(--mono); color: var(--text); overflow: hidden; width: 100vw; height: 100vh; }
+canvas { display: block; position: absolute; inset: 0; }
+
+/* ── TOPBAR ── */
+#topbar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.8rem;
+  background: linear-gradient(to bottom, rgba(5,6,8,.98) 55%, transparent);
+  pointer-events: none;
+}
+#brand { font-family: var(--vt); font-size: 1.5rem; letter-spacing: .18em; color: var(--ai); text-shadow: 0 0 12px rgba(0,229,196,.4); }
+#hint  { font-size: .62rem; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
+
+/* ── MODES ── */
+#modes {
+  position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 0; z-index: 20;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 4px; overflow: hidden;
+  backdrop-filter: blur(12px);
+}
+.mpill {
+  font-family: var(--mono); font-size: .65rem; letter-spacing: .12em; text-transform: uppercase;
+  padding: .5rem 1.2rem; border: none; background: rgba(8,10,14,.85);
+  color: var(--muted); cursor: pointer; border-right: 1px solid rgba(255,255,255,.08);
+  transition: all .18s; white-space: nowrap;
+}
+.mpill:last-child { border-right: none; }
+.mpill:hover { color: var(--text); background: rgba(255,255,255,.04); }
+.mpill.on-existing { background: rgba(74,127,255,.15); color: var(--data); }
+.mpill.on-ai       { background: rgba(0,229,196,.18); color: var(--ai); }
+.mpill.on-doctor   { background: rgba(91,200,255,.15); color: var(--doc); }
+.mpill.on-patient  { background: rgba(217,102,255,.15); color: var(--pat); }
+
+/* ── LEGEND ── */
+#legend {
+  position: absolute; top: 3.8rem; right: 1.5rem; z-index: 20; pointer-events: none;
+  display: flex; flex-direction: column; gap: .45rem;
+}
+.leg { display: flex; align-items: center; gap: .5rem; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.legdot { width: 5px; height: 5px; border-radius: 50%; }
+
+/* ── TOOLTIP ── */
+#tip {
+  position: absolute; pointer-events: none; z-index: 30;
+  width: 200px; background: rgba(8,10,16,.97);
+  border: 1px solid rgba(255,255,255,.1);
+  border-left: 2px solid var(--ai);
+  padding: .75rem 1rem; opacity: 0; transition: opacity .12s;
+  font-size: .7rem; line-height: 1.6; color: rgba(255,255,255,.6);
+}
+#tip.show { opacity: 1; }
+#tip-name { font-family: var(--vt); font-size: 1.1rem; letter-spacing: .1em; display: block; margin-bottom: .3rem; }
+.tip-ai   { color: var(--ai); text-shadow: 0 0 8px rgba(0,229,196,.5); }
+.tip-data { color: var(--data); }
+.tip-doc  { color: var(--doc); }
+.tip-pat  { color: var(--pat); }
+
+
+/* ══════════════════════════════════════════
+   OVERLAY — floating modal over the canvas
+══════════════════════════════════════════ */
+
+/* Dim backdrop */
+.overlay-backdrop {
+  position: absolute; inset: 0; z-index: 39;
+  background: rgba(5,6,8,.72);
+  display: none;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.overlay-backdrop.show { display: block; animation: bdIn .2s ease forwards; }
+@keyframes bdIn { from { opacity:0; } to { opacity:1; } }
+
+.overlay {
+  position: absolute;
+  top: 50%; left: 50%;
+  z-index: 40;
+  width: min(92vw, 1060px);
+  height: min(86vh, 660px);
+  background: #f2f3f5;
+  border-radius: 14px;
+  box-shadow: 0 40px 100px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.07);
+  display: none; flex-direction: column; overflow: hidden;
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  color: #1a1c22;
+}
+.overlay.show {
+  display: flex;
+  animation: modalIn .25s cubic-bezier(.34,1.15,.64,1) forwards;
+}
+@keyframes modalIn {
+  from { opacity:0; transform: translate(-50%,-50%) scale(.96); }
+  to   { opacity:1; transform: translate(-50%,-50%) scale(1); }
+}
+
+/* Orb canvas floats over the modal, outside overflow:hidden */
+#orb-canvas {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 41;
+  pointer-events: none;
+  display: none;
+  border-radius: 14px;
+}
+#orb-canvas.show { display: block; }
+
+
+/* ── Close button ── */
+.ov-close {
+  position: absolute; top: 1rem; right: 1.25rem;
+  font-size: .7rem; font-weight: 500; letter-spacing: .04em;
+  color: #6b7280; cursor: pointer; border: 1px solid #e5e7eb;
+  background: #fff; border-radius: 6px;
+  padding: .35rem .8rem;
+  transition: all .15s; z-index: 50; font-family: inherit;
+  display: flex; align-items: center; gap: .35rem;
+  line-height: 1;
+}
+.ov-close::before { content: '✕'; font-size: .65rem; }
+.ov-close:hover { color: #111; border-color: #9ca3af; background: #f9fafb; }
+
+/* ── Shared header ── */
+.ov-header {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem 10rem 1rem 1.5rem;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  min-height: 64px;
+}
+.ov-eyebrow {
+  font-size: .65rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; margin-bottom: .25rem;
+}
+.ov-title {
+  font-size: 1.05rem; font-weight: 600; color: #111;
+  letter-spacing: -.01em;
+}
+.ov-sub {
+  font-size: .72rem; color: #9ca3af; margin-top: .15rem;
+  font-weight: 400;
+}
+.ov-badge {
+  font-size: .62rem; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; padding: .25rem .65rem;
+  border-radius: 20px;
+}
+.badge-doc { background: #eff6ff; color: #3b82f6; border: 1px solid #bfdbfe; }
+.badge-pat { background: #fdf4ff; color: #a855f7; border: 1px solid #e9d5ff; }
+.badge-live { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; display: flex; align-items: center; gap: .35rem; }
+.live-dot { width: 5px; height: 5px; border-radius: 50%; background: #16a34a; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+/* ── Body grid ── */
+.ov-body {
+  flex: 1; display: grid; overflow: hidden; min-height: 0;
+}
+#ov-doc .ov-body { grid-template-columns: 280px 1fr 260px; }
+#ov-pat .ov-body { grid-template-columns: 1fr 1fr 280px; }
+
+/* ── Column base ── */
+.ov-col {
+  border-right: 1px solid #e5e7eb;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: #fff;
+}
+.ov-col:last-child { border-right: none; }
+.ov-col.bg-subtle { background: #f9fafb; }
+
+.col-head {
+  padding: .75rem 1.25rem;
+  font-size: .65rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: #9ca3af;
+  border-bottom: 1px solid #f3f4f6;
+  flex-shrink: 0; background: inherit;
+}
+
+/* ── Scrollable areas ── */
+.col-scroll {
+  flex: 1; overflow-y: auto; padding: 1rem 1.25rem;
+}
+.col-scroll::-webkit-scrollbar { width: 3px; }
+.col-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+
+/* ── Patient strip (doctor view) ── */
+.pt-strip {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #f3f4f6;
+  flex-shrink: 0;
+}
+.pt-name { font-size: 1rem; font-weight: 600; color: #111; letter-spacing: -.01em; }
+.pt-meta { font-size: .7rem; color: #9ca3af; margin-top: .2rem; }
+.pt-tags { display: flex; gap: .35rem; margin-top: .6rem; flex-wrap: wrap; }
+.tag {
+  font-size: .62rem; font-weight: 500; padding: .2rem .55rem;
+  border-radius: 20px; white-space: nowrap;
+}
+.tag-warn { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+.tag-ok   { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+.tag-info { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+.tag-grey { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+
+/* ── Timeline ── */
+.trow { display: flex; gap: .75rem; padding: .6rem 0; border-bottom: 1px solid #f3f4f6; align-items: flex-start; }
+.trow:last-child { border-bottom: none; }
+.trow-date { font-size: .65rem; font-weight: 500; color: #9ca3af; min-width: 40px; padding-top: 2px; }
+.trow-body { flex: 1; }
+.trow-label {
+  display: inline-block; font-size: .6rem; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; padding: .1rem .4rem; border-radius: 3px; margin-bottom: .25rem;
+}
+.lbl-ai   { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+.lbl-lab  { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+.lbl-rx   { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+.lbl-note { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+.trow-text { font-size: .75rem; line-height: 1.55; color: #4b5563; }
+
+/* ── AI Draft (doctor col 2) ── */
+.ai-notice {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .65rem .9rem; margin-bottom: .85rem;
+  background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;
+  font-size: .7rem; color: #15803d; font-weight: 500;
+}
+.ai-notice-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; flex-shrink:0; }
+
+.field-row { margin-bottom: .85rem; }
+.field-lbl {
+  font-size: .63rem; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: #9ca3af; margin-bottom: .3rem;
+}
+.field-val {
+  font-size: .8rem; line-height: 1.6; color: #1f2937;
+  background: #f9fafb; border: 1px solid #e5e7eb;
+  border-radius: 6px; padding: .55rem .75rem;
+}
+.field-val.editable { border-color: #93c5fd; background: #eff6ff; }
+.field-val.alert    { border-color: #fbbf24; background: #fffbeb; color: #92400e; }
+.field-val.success  { border-color: #86efac; background: #f0fdf4; color: #166534; }
+
+.approve-btn {
+  width: 100%; margin-top: .5rem; padding: .65rem;
+  background: #111; color: #fff; border: none; border-radius: 6px;
+  font-size: .75rem; font-weight: 600; letter-spacing: .04em;
+  cursor: pointer; transition: background .15s; font-family: inherit;
+}
+.approve-btn:hover { background: #1f2937; }
+
+/* ── Vitals ── */
+.v-section { margin-bottom: 1.25rem; }
+.v-section-title {
+  font-size: .63rem; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: #9ca3af;
+  margin-bottom: .5rem; padding-bottom: .35rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+.v-row { display: flex; justify-content: space-between; align-items: center; padding: .35rem 0; }
+.v-name { font-size: .75rem; color: #6b7280; }
+.v-val  { font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.v-ok   { color: #16a34a; }
+.v-warn { color: #d97706; }
+.v-crit { color: #dc2626; }
+.v-bar  { height: 3px; background: #f3f4f6; border-radius: 2px; margin-top: .15rem; overflow: hidden; }
+.v-fill { height: 100%; border-radius: 2px; }
+
+/* ── Risk cards ── */
+.risk-card {
+  padding: .65rem .85rem; border-radius: 6px;
+  margin-bottom: .5rem;
+}
+.risk-hi  { background: #fef2f2; border: 1px solid #fecaca; }
+.risk-med { background: #fffbeb; border: 1px solid #fde68a; }
+.risk-lo  { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.risk-name {
+  font-size: .72rem; font-weight: 600; margin-bottom: .2rem;
+}
+.risk-hi  .risk-name { color: #b91c1c; }
+.risk-med .risk-name { color: #92400e; }
+.risk-lo  .risk-name { color: #166534; }
+.risk-desc { font-size: .72rem; line-height: 1.5; color: #6b7280; }
+
+/* ══ PATIENT OVERLAY ══ */
+/* Visit summary */
+.visit-card {
+  background: #fdf4ff; border: 1px solid #e9d5ff;
+  border-radius: 8px; padding: .9rem 1rem; margin-bottom: .85rem;
+}
+.visit-date { font-size: .63rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #9ca3af; margin-bottom: .3rem; }
+.visit-title { font-size: .9rem; font-weight: 600; color: #111; margin-bottom: .5rem; }
+.visit-body { font-size: .78rem; line-height: 1.7; color: #4b5563; }
+.visit-body strong { color: #111; font-weight: 600; }
+
+.steps-card {
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 8px; padding: .9rem 1rem;
+}
+.steps-card .visit-date { color: #9ca3af; }
+.steps-card .visit-title { color: #15803d; }
+.steps-card .visit-body { color: #374151; }
+
+/* ── Emmie chat ── */
+.chat-area {
+  flex: 1; overflow-y: auto; padding: .85rem 1.25rem;
+  display: flex; flex-direction: column; gap: .75rem;
+  background: #f9fafb;
+}
+.chat-area::-webkit-scrollbar { width: 3px; }
+.chat-area::-webkit-scrollbar-thumb { background: #e5e7eb; }
+.msg { max-width: 86%; }
+.msg-ai   { align-self: flex-start; }
+.msg-user { align-self: flex-end; }
+.msg-from {
+  font-size: .6rem; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: #9ca3af; margin-bottom: .2rem;
+}
+.msg-body {
+  font-size: .78rem; line-height: 1.65;
+  padding: .6rem .85rem; border-radius: 10px;
+}
+.msg-ai   .msg-body { background: #fff; border: 1px solid #e9d5ff; color: #374151; border-bottom-left-radius: 3px; }
+.msg-user .msg-body { background: #a855f7; color: #fff; border-bottom-right-radius: 3px; }
+.typing { display: flex; gap: .3rem; align-items: center; padding: .3rem 0; }
+.typing span { width: 6px; height: 6px; border-radius: 50%; background: #c4b5fd; animation: blink 1.2s infinite; }
+.typing span:nth-child(2) { animation-delay: .2s; }
+.typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%,100%{opacity:.2;} 50%{opacity:1;} }
+
+/* ── Care checklist ── */
+.care-scroll {
+  flex: 1; overflow-y: auto; padding: .75rem 1.25rem;
+}
+.care-scroll::-webkit-scrollbar { width: 3px; }
+.care-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; }
+.care-item {
+  display: flex; align-items: flex-start; gap: .85rem;
+  padding: .75rem 0; border-bottom: 1px solid #f3f4f6;
+}
+.care-item:last-child { border-bottom: none; }
+.care-icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+.care-icon svg { width: 15px; height: 15px; }
+.care-ic-warn { background: #fff7ed; border: 1px solid #fed7aa; }
+.care-ic-ok   { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.care-ic-info { background: #fdf4ff; border: 1px solid #e9d5ff; }
+.care-right { flex: 1; }
+.care-title { font-size: .78rem; font-weight: 500; color: #111; margin-bottom: .15rem; }
+.care-sub   { font-size: .72rem; color: #6b7280; line-height: 1.5; }
+.care-action {
+  display: inline-block; margin-top: .35rem;
+  font-size: .65rem; font-weight: 600; letter-spacing: .04em;
+  color: #7c3aed; cursor: pointer; text-decoration: none;
+}
+.care-action:hover { text-decoration: underline; }
+
+@media (max-width: 700px) {
+  #ov-doc .ov-body, #ov-pat .ov-body { grid-template-columns: 1fr; overflow-y: auto; }
+  .ov-col { border-right: none; border-bottom: 1px solid #e5e7eb; max-height: 300px; }
+}
+
+/* ── NODE INFO POPUP ── */
+#node-popup-backdrop {
+  position: absolute; inset: 0; z-index: 44;
+  background: rgba(5,6,8,.55);
+  backdrop-filter: blur(2px);
+  display: none;
+}
+#node-popup-backdrop.show { display: block; }
+
+#node-popup {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 45;
+  width: min(88vw, 560px);
+  background: rgba(5,7,12,.98);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 6px;
+  font-family: var(--mono);
+  display: none;
+  pointer-events: auto;
+  overflow: hidden;
+}
+#node-popup.show {
+  display: block;
+  animation: npIn .22s cubic-bezier(.34,1.15,.64,1) forwards;
+}
+@keyframes npIn {
+  from { opacity:0; transform: translate(-50%,-50%) scale(.94); }
+  to   { opacity:1; transform: translate(-50%,-50%) scale(1); }
+}
+.np-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  display: flex; align-items: center; gap: .85rem;
+}
+.np-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink:0; }
+.np-title { font-family: var(--vt); font-size: 1.6rem; letter-spacing: .14em; }
+.np-sub { font-size: .6rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: .15rem; }
+.np-close {
+  margin-left: auto; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); cursor: pointer; padding: .25rem .65rem;
+  border: 1px solid rgba(255,255,255,.1); border-radius: 2px;
+  background: transparent; font-family: var(--mono);
+  transition: all .15s; flex-shrink: 0;
+}
+.np-close:hover { color: #fff; border-color: rgba(255,255,255,.3); }
+.np-body { padding: 1.1rem 1.25rem; }
+.np-desc { font-size: .78rem; line-height: 1.75; color: rgba(255,255,255,.62); font-family: var(--read); margin-bottom: 1rem; }
+.np-stats { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-bottom: .75rem; }
+.np-stat { padding: .5rem .7rem; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06); border-radius: 3px; }
+.np-stat-label { font-size: .57rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: .25rem; }
+.np-stat-val { font-family: var(--vt); font-size: 1.15rem; letter-spacing: .06em; display: block; }
+.np-tag-row { display: flex; gap: .4rem; flex-wrap: wrap; }
+.np-tag { font-size: .57rem; letter-spacing: .1em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 2px; }
+
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="brand">MYCHART_AI</div>
+  <div id="hint">DRAG NODES // CLICK MODE TO EXPLORE</div>
+</div>
+
+<div id="legend">
+  <div class="leg"><div class="legdot" style="background:var(--ai)"></div>AI Core</div>
+  <div class="leg"><div class="legdot" style="background:var(--data)"></div>Data Network</div>
+  <div class="leg"><div class="legdot" style="background:var(--doc)"></div>Doctor</div>
+  <div class="leg"><div class="legdot" style="background:var(--pat)"></div>Patient</div>
+</div>
+
+<canvas id="c"></canvas>
+
+<div id="tip"><span id="tip-name"></span><span id="tip-body"></span></div>
+
+<div id="modes">
+  <button class="mpill on-existing" id="p-ex"  onclick="setMode('existing')">[ EXISTING ]</button>
+  <button class="mpill"             id="p-ai"  onclick="setMode('ai')">[ MYCHART AI ]</button>
+  <button class="mpill"             id="p-doc" onclick="setMode('doctor')">[ DOCTOR VIEW ]</button>
+  <button class="mpill"             id="p-pat" onclick="setMode('patient')">[ PATIENT VIEW ]</button>
+</div>
+
+<div class="overlay-backdrop" id="ov-backdrop" onclick="closeOverlay()"></div>
+<canvas id="orb-canvas"></canvas>
+
+<!-- ══ DOCTOR OVERLAY ══ -->
+<div class="overlay" id="ov-doc">
+  <button class="ov-close" onclick="closeOverlay()">Close</button>
+  <div class="ov-header">
+    <div>
+      <div class="ov-eyebrow" style="color:#3b82f6">Physician Interface</div>
+      <div class="ov-title">Clinical Dashboard</div>
+      <div class="ov-sub">MyChart AI — Concept Mockup</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center;">
+      <span class="ov-badge badge-doc">Doctor View</span>
+      <span class="ov-badge badge-live"><span class="live-dot"></span>Live</span>
+    </div>
+  </div>
+  <div class="ov-body">
+
+    <!-- COL 1: Patient + Timeline -->
+    <div class="ov-col">
+      <div class="col-head">Patient Record</div>
+      <div class="pt-strip">
+        <div class="pt-name">Sarah Chen, 54F</div>
+        <div class="pt-meta">MRN 0042817 · DOB Mar 14, 1970 · UC Health Riverside</div>
+        <div class="pt-tags">
+          <span class="tag tag-warn">Pre-Diabetic</span>
+          <span class="tag tag-warn">HTN Stage 1</span>
+          <span class="tag tag-ok">TEFCA Active</span>
+          <span class="tag tag-info">Carequality</span>
+        </div>
+      </div>
+      <div class="col-head" style="border-top:1px solid #f3f4f6">Visit History</div>
+      <div class="col-scroll">
+        <div class="trow">
+          <div class="trow-date">Today</div>
+          <div class="trow-body"><span class="trow-label lbl-ai">AI Draft</span><div class="trow-text">Annual wellness. Fatigue x 3 weeks, BP 138/88, glucose 118. AI chart draft ready.</div></div>
+        </div>
+        <div class="trow">
+          <div class="trow-date">3 mo</div>
+          <div class="trow-body"><span class="trow-label lbl-lab">Lab</span><div class="trow-text">HbA1c 6.2% ↑ from 5.9. Creatinine 0.98. Cholesterol 204 / LDL 128.</div></div>
+        </div>
+        <div class="trow">
+          <div class="trow-date">6 mo</div>
+          <div class="trow-body"><span class="trow-label lbl-rx">Rx</span><div class="trow-text">Lisinopril 10mg initiated. Metformin deferred. Lifestyle counseling.</div></div>
+        </div>
+        <div class="trow">
+          <div class="trow-date">9 mo</div>
+          <div class="trow-body"><span class="trow-label lbl-note">Note</span><div class="trow-text">Cedars-Sinai records via TEFCA. Prior cardiac eval 2022 — normal stress echo.</div></div>
+        </div>
+        <div class="trow">
+          <div class="trow-date">12 mo</div>
+          <div class="trow-body"><span class="trow-label lbl-lab">Lab</span><div class="trow-text">HbA1c 5.9. BP 142/90. Nutritionist referral. Moderate diet adherence.</div></div>
+        </div>
+        <div class="trow">
+          <div class="trow-date">18 mo</div>
+          <div class="trow-body"><span class="trow-label lbl-note">Note</span><div class="trow-text">CommonWell: Kaiser records merged. No duplicate meds. Sutter gap 2021–23.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COL 2: AI Draft -->
+    <div class="ov-col bg-subtle">
+      <div class="col-head">AI Chart Draft — Review &amp; Approve</div>
+      <div class="col-scroll">
+        <div class="ai-notice">
+          <span class="ai-notice-dot"></span>
+          MyChart AI · Cosmos + Encounter Context
+        </div>
+        <div class="field-row">
+          <div class="field-lbl">Chief Complaint</div>
+          <div class="field-val editable">Fatigue, onset 3 weeks, no fever, no weight change. Patient reports poor sleep quality.</div>
+        </div>
+        <div class="field-row">
+          <div class="field-lbl">Assessment</div>
+          <div class="field-val editable">1. Pre-diabetes (HbA1c 6.2%, trending up 3 consecutive quarters)<br>2. Hypertension Stage 1 — BP above target on current Lisinopril 10mg<br>3. Fatigue — likely multifactorial; rule out thyroid, sleep apnea</div>
+        </div>
+        <div class="field-row">
+          <div class="field-lbl">AI Pattern Alert</div>
+          <div class="field-val alert">HbA1c has risen 0.3% over 3 visits. Cosmos model: 68% probability of T2D diagnosis within 18 months without intervention.</div>
+        </div>
+        <div class="field-row">
+          <div class="field-lbl">Suggested Plan</div>
+          <div class="field-val editable">1. Initiate Metformin 500mg BID — discuss with patient<br>2. Increase Lisinopril to 20mg or add amlodipine<br>3. Order TSH, CBC, sleep study referral<br>4. Follow-up 6 weeks</div>
+        </div>
+        <div class="field-row">
+          <div class="field-lbl">Suggested ICD-10</div>
+          <div class="field-val">R53.83 · Fatigue &nbsp;·&nbsp; R73.09 · Prediabetes &nbsp;·&nbsp; I10 · HTN</div>
+        </div>
+        <div class="field-row">
+          <div class="field-lbl">Cross-System Pull</div>
+          <div class="field-val success">✓ TEFCA: 4 records &nbsp;·&nbsp; ✓ Carequality: 2 records &nbsp;·&nbsp; ✓ CommonWell: Kaiser merged</div>
+        </div>
+        <button class="approve-btn">Approve &amp; Sign Note</button>
+      </div>
+    </div>
+
+    <!-- COL 3: Vitals + Risk -->
+    <div class="ov-col">
+      <div class="col-head">Vitals + Risk Flags</div>
+      <div class="col-scroll">
+        <div class="v-section">
+          <div class="v-section-title">Today's Vitals</div>
+          <div class="v-row"><span class="v-name">Blood Pressure</span><span class="v-val v-warn">138/88</span></div>
+          <div class="v-bar"><div class="v-fill" style="width:72%;background:#f59e0b;"></div></div>
+          <div class="v-row"><span class="v-name">Heart Rate</span><span class="v-val v-ok">74 bpm</span></div>
+          <div class="v-bar"><div class="v-fill" style="width:48%;background:#22c55e;"></div></div>
+          <div class="v-row"><span class="v-name">Fasting Glucose</span><span class="v-val v-warn">118 mg/dL</span></div>
+          <div class="v-bar"><div class="v-fill" style="width:65%;background:#f59e0b;"></div></div>
+          <div class="v-row"><span class="v-name">BMI</span><span class="v-val v-warn">27.4</span></div>
+          <div class="v-bar"><div class="v-fill" style="width:58%;background:#f59e0b;"></div></div>
+          <div class="v-row"><span class="v-name">SpO₂</span><span class="v-val v-ok">98%</span></div>
+          <div class="v-bar"><div class="v-fill" style="width:92%;background:#22c55e;"></div></div>
+        </div>
+        <div class="v-section">
+          <div class="v-section-title">Recent Labs</div>
+          <div class="v-row"><span class="v-name">HbA1c</span><span class="v-val v-warn">6.2% ↑</span></div>
+          <div class="v-row"><span class="v-name">LDL</span><span class="v-val v-warn">128</span></div>
+          <div class="v-row"><span class="v-name">Creatinine</span><span class="v-val v-ok">0.98</span></div>
+          <div class="v-row"><span class="v-name">TSH</span><span class="v-val" style="color:#9ca3af;font-weight:500;">Pending</span></div>
+        </div>
+        <div class="v-section">
+          <div class="v-section-title">AI Risk Flags</div>
+          <div class="risk-card risk-hi">
+            <div class="risk-name">T2 Diabetes Risk</div>
+            <div class="risk-desc">3-visit A1C trend. Cosmos: 68% progression risk in 18 months.</div>
+          </div>
+          <div class="risk-card risk-med">
+            <div class="risk-name">Cardiac — Borderline</div>
+            <div class="risk-desc">BP above target 3 consecutive visits. ASCVD 10yr: 12%.</div>
+          </div>
+          <div class="risk-card risk-lo">
+            <div class="risk-name">Kidney Function — Stable</div>
+            <div class="risk-desc">Creatinine stable. eGFR 78. No flagged decline.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ PATIENT OVERLAY ══ -->
+<div class="overlay" id="ov-pat">
+  <button class="ov-close" onclick="closeOverlay()">Back to Network</button>
+  <div class="ov-header">
+    <div>
+      <div class="ov-eyebrow" style="color:#a855f7">Patient Portal</div>
+      <div class="ov-title">MyChart — Sarah's View</div>
+      <div class="ov-sub">MyChart AI — Concept Mockup</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center;">
+      <span class="ov-badge badge-pat">Patient View</span>
+      <span class="ov-badge badge-live"><span class="live-dot" style="background:#a855f7;box-shadow:0 0 6px #a855f7"></span>Emmie Active</span>
+    </div>
+  </div>
+  <div class="ov-body">
+
+    <!-- COL 1: Visit summary -->
+    <div class="ov-col">
+      <div class="col-head">Your Visit Summary</div>
+      <div class="col-scroll">
+        <div class="visit-card">
+          <div class="visit-date">Today · UC Health Riverside</div>
+          <div class="visit-title">Annual Wellness Visit</div>
+          <div class="visit-body">
+            <strong>What happened:</strong> Dr. Kim reviewed your blood pressure and blood sugar, both slightly above goal. Your energy and sleep were also discussed.<br><br>
+            <strong>What to know:</strong> Your A1C has been slowly rising over the last year. Dr. Kim wants to discuss starting a low-dose medication called Metformin to keep it from becoming diabetes.<br><br>
+            <strong>Good news:</strong> Your kidneys look healthy, and your heart test from Cedars-Sinai in 2022 was normal — it's already on file here.
+          </div>
+        </div>
+        <div class="steps-card">
+          <div class="visit-date">Next Steps from Dr. Kim</div>
+          <div class="visit-title">Your Action Items</div>
+          <div class="visit-body">
+            1. Get a <strong>thyroid blood test (TSH)</strong> — lab is on the 2nd floor, no appointment needed<br><br>
+            2. A <strong>sleep study referral</strong> is being sent — expect a call within 5 days<br><br>
+            3. <strong>Follow-up in 6 weeks</strong> — book online below<br><br>
+            4. Consider the <strong>nutritionist referral</strong> — covered by your plan
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COL 2: Emmie chat -->
+    <div class="ov-col" style="background:#f9fafb;">
+      <div class="col-head" style="background:#f9fafb;">Emmie — AI Health Assistant</div>
+      <div class="chat-area">
+        <div class="msg msg-ai">
+          <div class="msg-from">Emmie</div>
+          <div class="msg-body">Hi Sarah — your visit summary is ready. What would you like to know about today's results?</div>
+        </div>
+        <div class="msg msg-user">
+          <div class="msg-from">You</div>
+          <div class="msg-body">What does A1C mean? Should I be worried?</div>
+        </div>
+        <div class="msg msg-ai">
+          <div class="msg-from">Emmie</div>
+          <div class="msg-body">A1C measures your average blood sugar over 3 months. Yours is 6.2% — normal is below 5.7%, and diabetes starts at 6.5%. You're in between, called pre-diabetes. The good news: it's very reversible with diet changes and, if needed, a low-dose medication.</div>
+        </div>
+        <div class="msg msg-user">
+          <div class="msg-from">You</div>
+          <div class="msg-body">Is Metformin safe?</div>
+        </div>
+        <div class="msg msg-ai">
+          <div class="msg-from">Emmie</div>
+          <div class="msg-body">Yes — it's one of the most studied diabetes medications and is well-tolerated. Take it with food to avoid stomach upset at first. Given your healthy kidney numbers, you're a good candidate. Dr. Kim will walk you through it at your follow-up.</div>
+        </div>
+        <div class="msg msg-ai">
+          <div class="msg-from">Emmie</div>
+          <div class="msg-body"><div class="typing"><span></span><span></span><span></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COL 3: Care checklist -->
+    <div class="ov-col">
+      <div class="col-head">Your Care Checklist</div>
+      <div class="care-scroll">
+        <div class="care-item">
+          <div class="care-icon care-ic-warn"><svg viewBox="0 0 14 14" fill="none" stroke="#c2410c" stroke-width="1.5" stroke-linecap="round"><rect x="5" y="1" width="4" height="3" rx=".5"/><line x1="7" y1="4" x2="7" y2="9"/><circle cx="7" cy="11.5" r="1" fill="#c2410c" stroke="none"/></svg></div>
+          <div class="care-right">
+            <div class="care-title">TSH Blood Test — Due Today</div>
+            <div class="care-sub">Order placed by Dr. Kim. Lab on the 2nd floor, no appointment needed.</div>
+            <span class="care-action">Get directions →</span>
+          </div>
+        </div>
+        <div class="care-item">
+          <div class="care-icon care-ic-warn"><svg viewBox="0 0 14 14" fill="none" stroke="#c2410c" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="2.5" width="12" height="10" rx="1"/><line x1="1" y1="6" x2="13" y2="6"/><line x1="4" y1="1" x2="4" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/></svg></div>
+          <div class="care-right">
+            <div class="care-title">Follow-up Visit — Book Now</div>
+            <div class="care-sub">Dr. Kim requests a 6-week check-in to review labs and medication.</div>
+            <span class="care-action">Schedule →</span>
+          </div>
+        </div>
+        <div class="care-item">
+          <div class="care-icon care-ic-info"><svg viewBox="0 0 14 14" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><line x1="7" y1="4" x2="7" y2="7.5"/><line x1="7" y1="9.5" x2="7" y2="10"/></svg></div>
+          <div class="care-right">
+            <div class="care-title">Sleep Study Referral — Pending</div>
+            <div class="care-sub">Sent to UC Health Sleep Center. Expect a call within 5 business days.</div>
+            <span class="care-action">Track status →</span>
+          </div>
+        </div>
+        <div class="care-item">
+          <div class="care-icon care-ic-ok"><svg viewBox="0 0 14 14" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="1" width="8" height="12" rx="1"/><line x1="5" y1="5" x2="9" y2="5"/><line x1="5" y1="7.5" x2="9" y2="7.5"/><line x1="5" y1="10" x2="7" y2="10"/></svg></div>
+          <div class="care-right">
+            <div class="care-title">Lisinopril 10mg — Active</div>
+            <div class="care-sub">Refill due in 14 days. Auto-refill is off.</div>
+            <span class="care-action">Request refill →</span>
+          </div>
+        </div>
+        <div class="care-item">
+          <div class="care-icon care-ic-info"><svg viewBox="0 0 14 14" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="5" r="2.5"/><path d="M2.5 12.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/></svg></div>
+          <div class="care-right">
+            <div class="care-title">Nutritionist Referral Available</div>
+            <div class="care-sub">Covered under your Anthem plan. Specializes in pre-diabetes.</div>
+            <span class="care-action">Book consult →</span>
+          </div>
+        </div>
+        <div class="care-item">
+          <div class="care-icon care-ic-ok"><svg viewBox="0 0 14 14" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round"><path d="M7 1L2 3.5v4c0 2.8 2.2 4.5 5 5 2.8-.5 5-2.2 5-5v-4L7 1z"/><polyline points="4.5,7 6.5,9 9.5,5"/></svg></div>
+          <div class="care-right">
+            <div class="care-title">Data Sharing — Active</div>
+            <div class="care-sub">Records shared with UC Health, Cedars-Sinai, and Kaiser via TEFCA.</div>
+            <span class="care-action">Manage consent →</span>
+          </div>
+        </div>
+        <div class="care-item">
+          <div class="care-icon care-ic-warn"><svg viewBox="0 0 14 14" fill="none" stroke="#c2410c" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><line x1="7" y1="4.5" x2="7" y2="7"/><circle cx="7" cy="9.5" r=".8" fill="#c2410c" stroke="none"/></svg></div>
+          <div class="care-right">
+            <div class="care-title">Mammogram — Overdue</div>
+            <div class="care-sub">Last completed 14 months ago. Recommended annually for your age group.</div>
+            <span class="care-action">Schedule now →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="node-popup-backdrop" onclick="closeNodePopup()"></div>
+<div id="node-popup">
+  <div class="np-header">
+    <div class="np-dot" id="np-dot"></div>
+    <div>
+      <div class="np-title" id="np-title"></div>
+      <div class="np-sub" id="np-sub"></div>
+    </div>
+    <button class="np-close" onclick="closeNodePopup()">✕ close</button>
+  </div>
+  <div class="np-body">
+    <div class="np-desc" id="np-desc"></div>
+    <div class="np-stats" id="np-stats"></div>
+    <div class="np-tag-row" id="np-tags"></div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize(); window.addEventListener('resize', resize);
+
+const NODES = [
+  { id:'center', lines:['MYCHART','AI'], sub:'INTELLIGENCE CORE', type:'ai',
+    r:56, fill:'#02120f', stroke:'#00e5c4', glow:'rgba(0,229,196,',
+    desc:'Synthesizes all connected network data into clinical insights at point of care.' },
+  { id:'tefca',  lines:['TEFCA'],   sub:'500M+ RECORDS',    type:'data',
+    r:40, fill:'#080e1e', stroke:'#4a7fff', glow:'rgba(74,127,255,',
+    desc:'Federal network of networks. 500M records exchanged as of early 2026.' },
+  { id:'care',   lines:['CARE','QUALITY'], sub:'1B DOCS/MO', type:'data',
+    r:40, fill:'#080e1e', stroke:'#4a7fff', glow:'rgba(74,127,255,',
+    desc:'Private sharing framework — ~1B clinical document exchanges per month.' },
+  { id:'common', lines:['COMMON','WELL'], sub:'MULTI-EHR',   type:'data',
+    r:40, fill:'#080e1e', stroke:'#4a7fff', glow:'rgba(74,127,255,',
+    desc:'Bridges competing EHR vendors. Interoperable with Carequality.' },
+  { id:'direct', lines:['DIRECT','TRUST'], sub:'ENCRYPTED P2P', type:'data',
+    r:40, fill:'#080e1e', stroke:'#4a7fff', glow:'rgba(74,127,255,',
+    desc:'Secure provider-to-provider messaging for referrals and discharge summaries.' },
+  { id:'epicai', lines:['EPIC AI'], sub:'ART · EMMIE · PENNY', type:'data',
+    r:40, fill:'#07091a', stroke:'#6a8fff', glow:'rgba(106,143,255,',
+    desc:"Epic's native AI suite — clinical, concierge, and revenue cycle tools." },
+  { id:'cosmos', lines:['COSMOS'], sub:'300M+ PATIENTS', type:'data',
+    r:40, fill:'#07091a', stroke:'#6a8fff', glow:'rgba(106,143,255,',
+    desc:"Epic's de-identified research dataset. CoMET trained on 118M patients." },
+  { id:'doctor', lines:['DOCTOR'], sub:'CLINICAL VIEW',      type:'doc',
+    r:38, fill:'#060f1e', stroke:'#5bc8ff', glow:'rgba(91,200,255,',
+    desc:'Physicians see AI drafts, pattern alerts, risk flags, and cross-system snapshots.', persona:true },
+  { id:'patient',lines:['PATIENT'], sub:'MYCHART PORTAL',    type:'pat',
+    r:38, fill:'#100618', stroke:'#d966ff', glow:'rgba(217,102,255,',
+    desc:'Patients see plain-language summaries, Emmie AI, care checklists, and consent controls.', persona:true },
+];
+
+const INIT_POS = {
+  center:  [.5,  .47], tefca:  [.21, .2 ], care:   [.79, .2 ],
+  common:  [.1,  .5 ], direct: [.9,  .5 ], epicai: [.28, .77],
+  cosmos:  [.72, .77], doctor: [.5,  .1 ], patient:[.5,  .88],
+};
+const pos = {};
+function initPos() { NODES.forEach(n => { if (!pos[n.id]) pos[n.id] = { x: INIT_POS[n.id][0]*W, y: INIT_POS[n.id][1]*H }; }); }
+initPos(); window.addEventListener('resize', () => { pos={}; initPos(); });
+
+const EDGES = {
+  existing:[['center','tefca'],['center','care'],['center','common'],['center','direct'],['center','epicai'],['center','cosmos']],
+  ai:      [['center','tefca'],['center','care'],['center','common'],['center','direct'],['center','epicai'],['center','cosmos']],
+  doctor:  [['center','tefca'],['center','care'],['center','common'],['center','direct'],['center','epicai'],['center','cosmos'],['center','doctor']],
+  patient: [['center','epicai'],['center','cosmos'],['center','patient']],
+};
+
+// Particles flow INTO center — so from=outer, to=center
+// We flip direction: particles travel from node → center
+let mode = 'existing';
+let dragNode = null, dragOx = 0, dragOy = 0;
+let hovNode = null;
+let tick = 0;
+const fade = { doctor:0, patient:0 };
+// Per-edge particles (for active modes)
+const particles = {};
+NODES.forEach((n,i) => particles[n.id] = i * .13);
+
+// Camera zoom state
+const cam = { x: 0, y: 0, scale: 1, tx: 0, ty: 0, ts: 1 };
+const CAM_SPEED = 0.09;
+
+// Sequential grey orb state for existing mode
+// One orb travels out AND back on a single channel, then moves to the next
+const existingEdgeCount = EDGES.existing.length; // 6
+let greyOrb = { edgeIdx: 0, t: 0, dir: 1 }; // dir: 1=outward, -1=return
+const GREY_ORB_SPEED = 0.003; // slow crawl
+
+const PILLS = { existing:'p-ex', ai:'p-ai', doctor:'p-doc', patient:'p-pat' };
+const PCLS  = { existing:'on-existing', ai:'on-ai', doctor:'on-doctor', patient:'on-patient' };
+
+function setMode(m) {
+  mode = m;
+  Object.keys(PILLS).forEach(k => document.getElementById(PILLS[k]).classList.remove(PCLS[k]));
+  document.getElementById(PILLS[m]).classList.add(PCLS[m]);
+  document.getElementById('ov-doc').classList.remove('show');
+  document.getElementById('ov-pat').classList.remove('show');
+  document.getElementById('ov-backdrop').classList.remove('show');
+  document.getElementById('orb-canvas').classList.remove('show');
+  if (m === 'doctor')  { document.getElementById('ov-doc').classList.add('show'); document.getElementById('ov-backdrop').classList.add('show'); document.getElementById('orb-canvas').classList.add('show'); resizeOrbCanvas(); }
+  if (m === 'patient') { document.getElementById('ov-pat').classList.add('show'); document.getElementById('ov-backdrop').classList.add('show'); document.getElementById('orb-canvas').classList.add('show'); resizeOrbCanvas(); }
+}
+function closeOverlay() {
+  document.getElementById('ov-doc').classList.remove('show');
+  document.getElementById('ov-pat').classList.remove('show');
+  document.getElementById('ov-backdrop').classList.remove('show');
+  document.getElementById('orb-canvas').classList.remove('show');
+  Object.keys(PILLS).forEach(k => document.getElementById(PILLS[k]).classList.remove(PCLS[k]));
+  mode = 'ai';
+  document.getElementById(PILLS['ai']).classList.add(PCLS['ai']);
+}
+
+// ── FLOWING BORDER ─────────────────────────────────────
+const oc = document.getElementById('orb-canvas');
+const octx = oc.getContext('2d');
+let OW=0, OH=0;
+const BORDER_R = 14;
+let borderTick = 0;
+
+function resizeOrbCanvas() {
+  const pad = 4;
+  const mw = Math.min(window.innerWidth * 0.92, 1060);
+  const mh = Math.min(window.innerHeight * 0.86, 660);
+  OW = oc.width  = mw + pad * 2;
+  OH = oc.height = mh + pad * 2;
+}
+resizeOrbCanvas();
+window.addEventListener('resize', resizeOrbCanvas);
+
+function buildPerimeterPath(ctx, w, h, r, pad) {
+  const x = pad, y = pad;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function drawBorderOrbs() {
+  requestAnimationFrame(drawBorderOrbs);
+  octx.clearRect(0, 0, OW, OH);
+  if (!oc.classList.contains('show')) return;
+
+  borderTick++;
+  const pad = 4;
+  const mw = OW - pad * 2;
+  const mh = OH - pad * 2;
+
+  // Slow breathing
+  const pulse  = 0.5 + 0.5 * Math.sin(borderTick * 0.025);
+  const pulse2 = 0.5 + 0.5 * Math.sin(borderTick * 0.018 + 1.8);
+
+  // Corner and edge anchor points — where the glow pools
+  const glowPoints = [
+    { x: pad,          y: pad,          col: '0,229,196',  p: pulse,  r: 180 },
+    { x: pad + mw,     y: pad,          col: '74,127,255', p: pulse2, r: 160 },
+    { x: pad + mw,     y: pad + mh,     col: '0,229,196',  p: pulse,  r: 180 },
+    { x: pad,          y: pad + mh,     col: '74,127,255', p: pulse2, r: 160 },
+    { x: pad + mw/2,   y: pad,          col: '0,229,196',  p: pulse2, r: 140 },
+    { x: pad + mw/2,   y: pad + mh,     col: '74,127,255', p: pulse,  r: 140 },
+    { x: pad,          y: pad + mh/2,   col: '0,229,196',  p: pulse,  r: 130 },
+    { x: pad + mw,     y: pad + mh/2,   col: '74,127,255', p: pulse2, r: 130 },
+  ];
+
+  glowPoints.forEach(({ x, y, col, p, r }) => {
+    const g = octx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0,   `rgba(${col},${0.18 + p * 0.18})`);
+    g.addColorStop(0.3, `rgba(${col},${0.08 + p * 0.08})`);
+    g.addColorStop(1,   `rgba(${col},0)`);
+    octx.save();
+    octx.fillStyle = g;
+    octx.fillRect(0, 0, OW, OH);
+    octx.restore();
+  });
+}
+drawBorderOrbs();
+
+// ── DRAW ────────────────────────────────────────────────
+function bezier(ax,ay,bx,by,ra,rb) {
+  const dx=bx-ax, dy=by-ay, d=Math.hypot(dx,dy)||1;
+  const ux=dx/d, uy=dy/d;
+  const sx=ax+ux*ra, sy=ay+uy*ra;
+  const ex=bx-ux*rb, ey=by-uy*rb;
+  const mx=(sx+ex)/2, my=(sy+ey)/2;
+  // No bend — straight lines
+  return { sx,sy,ex,ey,cx1:mx, cy1:my };
+}
+function bpt(b,t) {
+  const it=1-t;
+  return { x:it*it*b.sx+2*it*t*b.cx1+t*t*b.ex, y:it*it*b.sy+2*it*t*b.cy1+t*t*b.ey };
+}
+
+function drawStaticEdge(ax,ay,bx,by,ra,rb) {
+  const b=bezier(ax,ay,bx,by,ra,rb);
+  ctx.save();
+  // Faint outer tube
+  ctx.globalAlpha=.08; ctx.strokeStyle='#4a7fff'; ctx.lineWidth=4;
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(b.sx,b.sy); ctx.quadraticCurveTo(b.cx1,b.cy1,b.ex,b.ey); ctx.stroke();
+  // Dim spine
+  ctx.globalAlpha=.18; ctx.strokeStyle='rgba(74,127,255,.7)'; ctx.lineWidth=.8;
+  ctx.beginPath(); ctx.moveTo(b.sx,b.sy); ctx.quadraticCurveTo(b.cx1,b.cy1,b.ex,b.ey); ctx.stroke();
+  ctx.restore();
+}
+
+function drawActiveEdge(ax,ay,bx,by,ra,rb,col,opac) {
+  const b=bezier(ax,ay,bx,by,ra,rb);
+  ctx.save();
+  // Same quiet look as static edges — just slightly brighter
+  ctx.globalAlpha=opac*.11; ctx.strokeStyle=col; ctx.lineWidth=4;
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(b.sx,b.sy); ctx.quadraticCurveTo(b.cx1,b.cy1,b.ex,b.ey); ctx.stroke();
+  ctx.globalAlpha=opac*.22; ctx.strokeStyle=col; ctx.lineWidth=.9;
+  ctx.beginPath(); ctx.moveTo(b.sx,b.sy); ctx.quadraticCurveTo(b.cx1,b.cy1,b.ex,b.ey); ctx.stroke();
+  ctx.restore();
+}
+
+function drawParticle(ax,ay,bx,by,ra,rb, t, col, opac) {
+  // Particles flow FROM outer node INTO center (t goes 0→1 means outer→center)
+  // edgeFrom = outer node position, edgeTo = center
+  const b = bezier(ax,ay,bx,by,ra,rb);
+  // Reverse t so particle goes from outer (t=0 at outer end) to center
+  const rt = t;
+  const p = bpt(b, rt);
+  ctx.save();
+  ctx.globalAlpha = opac * (0.3 + 0.7 * Math.sin(rt * Math.PI));
+  // Trail
+  for (let i=4;i>=0;i--) {
+    const tt = Math.max(0, rt - i*.05);
+    const tp = bpt(b, tt);
+    ctx.globalAlpha = opac * ((5-i)/5) * .3 * Math.sin(rt*Math.PI);
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(tp.x,tp.y,2.5-i*.35,0,Math.PI*2); ctx.fill();
+  }
+  // Head
+  ctx.globalAlpha = opac * Math.sin(rt*Math.PI) * .9;
+  const g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,8);
+  g.addColorStop(0,col); g.addColorStop(1,'transparent');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,8,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha = opac * Math.sin(rt*Math.PI);
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(p.x,p.y,2,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+const ECOL = { ai:'#00e5c4', doctor:'#5bc8ff', patient:'#d966ff' };
+const nodeMap = {};
+NODES.forEach(n=>nodeMap[n.id]=n);
+
+function drawNode(n, opac) {
+  const {x,y}=pos[n.id], r=n.r;
+  const isHov=hovNode===n.id, sr=r*(isHov?1.07:1);
+  ctx.save(); ctx.globalAlpha=opac;
+
+  // Halo
+  const hal=ctx.createRadialGradient(x,y,sr*.3,x,y,sr*2.8);
+  hal.addColorStop(0, n.glow+(isHov?.18:n.type==='ai'?.12:.06)+')');
+  hal.addColorStop(1, n.glow+'0)');
+  ctx.fillStyle=hal; ctx.beginPath(); ctx.arc(x,y,sr*2.8,0,Math.PI*2); ctx.fill();
+
+  // AI pulse rings
+  if (n.type==='ai') {
+    [20,32,46].forEach((off,i)=>{
+      const pr = sr + off + Math.sin(tick*.04 + i*1.2)*3;
+      ctx.strokeStyle=n.stroke; ctx.lineWidth=.5;
+      ctx.globalAlpha=opac*(.12-i*.03);
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(x,y,pr,0,Math.PI*2); ctx.stroke();
+    });
+    ctx.globalAlpha=opac;
+  }
+
+  // Body
+  ctx.shadowColor=n.stroke; ctx.shadowBlur=isHov?22:10;
+  const bf=ctx.createRadialGradient(x-sr*.2,y-sr*.2,0,x,y,sr);
+  bf.addColorStop(0,lighten(n.fill,12)); bf.addColorStop(1,n.fill);
+  ctx.beginPath(); ctx.arc(x,y,sr,0,Math.PI*2);
+  ctx.fillStyle=bf; ctx.fill();
+  ctx.shadowBlur=0;
+
+  // Border
+  ctx.strokeStyle=n.stroke; ctx.lineWidth=isHov?1.8:1.2; ctx.globalAlpha=opac*(isHov?.85:.5);
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(x,y,sr,0,Math.PI*2); ctx.stroke();
+  // Inner ring
+  ctx.lineWidth=.5; ctx.globalAlpha=opac*.18;
+  ctx.beginPath(); ctx.arc(x,y,sr-5,0,Math.PI*2); ctx.stroke();
+  ctx.globalAlpha=opac;
+
+  // Label
+  ctx.shadowBlur=0; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const isC=n.id==='center';
+  if (n.lines.length===2) {
+    ctx.font=`${isC?15:11}px 'Share Tech Mono',monospace`;
+    ctx.fillStyle=n.stroke; ctx.globalAlpha=opac*.9;
+    ctx.fillText(n.lines[0],x,y-8);
+    ctx.fillText(n.lines[1],x,y+9);
+  } else {
+    ctx.font=`${isC?15:12}px 'Share Tech Mono',monospace`;
+    ctx.fillStyle=n.stroke; ctx.globalAlpha=opac*.9;
+    ctx.fillText(n.lines[0],x,y);
+  }
+  if (n.sub) {
+    ctx.font=`8.5px 'Share Tech Mono',monospace`;
+    ctx.fillStyle=n.stroke; ctx.globalAlpha=opac*.3;
+    ctx.fillText(n.sub,x,y+sr+13);
+  }
+  ctx.restore();
+}
+
+function lighten(hex,a) {
+  const n=parseInt(hex.slice(1),16);
+  return `rgb(${Math.min(255,((n>>16)&0xff)+a)},${Math.min(255,((n>>8)&0xff)+a)},${Math.min(255,(n&0xff)+a)})`;
+}
+
+function drawGreyOrb(ax,ay,bx,by,ra,rb,t) {
+  const b=bezier(ax,ay,bx,by,ra,rb);
+  const p=bpt(b,t);
+  const fade=Math.sin(t*Math.PI); // fade in/out at ends
+  ctx.save();
+  // Soft outer glow
+  ctx.globalAlpha=fade*.12;
+  const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,10);
+  g.addColorStop(0,'rgba(180,190,210,.9)'); g.addColorStop(1,'transparent');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,10,0,Math.PI*2); ctx.fill();
+  // Core
+  ctx.globalAlpha=fade*.55;
+  const gc=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,4);
+  gc.addColorStop(0,'rgba(210,220,235,1)'); gc.addColorStop(1,'rgba(130,145,170,.2)');
+  ctx.fillStyle=gc; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill();
+  // Bright centre dot
+  ctx.globalAlpha=fade*.7;
+  ctx.fillStyle='rgba(230,235,245,.9)';
+  ctx.beginPath(); ctx.arc(p.x,p.y,1.5,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function draw() {
+  requestAnimationFrame(draw);
+
+  // Lerp camera toward target
+  cam.x += (cam.tx - cam.x) * CAM_SPEED;
+  cam.y += (cam.ty - cam.y) * CAM_SPEED;
+  cam.scale += (cam.ts - cam.scale) * CAM_SPEED;
+
+  ctx.clearRect(0,0,W,H);
+  tick++;
+
+  // Apply camera transform
+  ctx.save();
+  ctx.setTransform(cam.scale, 0, 0, cam.scale, cam.x, cam.y);
+
+  // Scanline texture
+  ctx.save();
+  for (let y=0;y<H/cam.scale+4;y+=3) {
+    ctx.globalAlpha=.012; ctx.fillStyle='#000';
+    ctx.fillRect(-cam.x/cam.scale, y, W/cam.scale, 1);
+  }
+  ctx.restore();
+
+  // Ambient glow blobs
+  ctx.save();
+  [[.3,.4,'rgba(0,100,80,.06)'],[.7,.5,'rgba(30,60,150,.05)'],[.5,.7,'rgba(100,0,120,.04)']].forEach(([fx,fy,c])=>{
+    const gx=fx*W, gy=fy*H;
+    const gr=ctx.createRadialGradient(gx,gy,0,gx,gy,W*.3);
+    gr.addColorStop(0,c); gr.addColorStop(1,'transparent');
+    ctx.globalAlpha=1; ctx.fillStyle=gr; ctx.fillRect(-cam.x/cam.scale,-cam.y/cam.scale,W/cam.scale,H/cam.scale);
+  });
+  ctx.restore();
+
+  // Tick particles — inward fast, outward slow
+  NODES.forEach((n,i)=>{
+    particles[n.id]=(particles[n.id]+.006)%1;
+    particles[n.id+'_out']=((particles[n.id+'_out']||i*.31)+.0038)%1;
+  });
+
+  // Static edges
+  EDGES.existing.forEach(([a,b])=>{
+    const pa=pos[a],pb=pos[b],ra=nodeMap[a].r,rb=nodeMap[b].r;
+    drawStaticEdge(pa.x,pa.y,pb.x,pb.y,ra,rb);
+  });
+
+  // Grey orb: travels OUT along one edge then BACK, then moves to next edge
+  if (mode === 'existing' || true) {
+    // Tick
+    greyOrb.t += GREY_ORB_SPEED * greyOrb.dir;
+    if (greyOrb.dir === 1 && greyOrb.t >= 1) {
+      greyOrb.t = 1; greyOrb.dir = -1; // reached outer node, now return
+    } else if (greyOrb.dir === -1 && greyOrb.t <= 0) {
+      greyOrb.t = 0; greyOrb.dir = 1;  // back at center, move to next edge
+      greyOrb.edgeIdx = (greyOrb.edgeIdx + 1) % existingEdgeCount;
+    }
+    const [ea, eb] = EDGES.existing[greyOrb.edgeIdx];
+    const pa=pos[ea], pb=pos[eb], ra=nodeMap[ea].r, rb=nodeMap[eb].r;
+    // t=0 is center, t=1 is outer — orb travels center→outer→center
+    drawGreyOrb(pa.x,pa.y,pb.x,pb.y,ra,rb,greyOrb.t);
+  }
+
+  // Active edges + bidirectional orbs
+  if (mode!=='existing') {
+    const edgeMode = (mode==='doctor'||mode==='patient') ? 'ai' : mode;
+    EDGES[edgeMode].forEach(([a,b],i)=>{
+      if(b==='doctor'||b==='patient') return;
+      const pa=pos[a], pb=pos[b];
+      const ra=nodeMap[a].r, rb=nodeMap[b].r;
+      const col=ECOL['ai'];
+      drawActiveEdge(pa.x,pa.y,pb.x,pb.y,ra,rb,col,1);
+      // Inward orb: outer → center (faster)
+      const tIn=(particles[b]+i*.19)%1;
+      drawParticle(pb.x,pb.y,pa.x,pa.y,rb,ra,tIn,col,1);
+      // Outward orb: center → outer (slower, dimmer)
+      const tOut=(particles[b+'_out']||i*.31)%1;
+      drawParticle(pa.x,pa.y,pb.x,pb.y,ra,rb,tOut,col,.5);
+    });
+  }
+
+  // Nodes — non-persona only
+  NODES.filter(n=>!n.persona).forEach(n=>drawNode(n,1));
+
+  ctx.restore(); // end camera transform
+}
+draw();
+
+// ── NODE INFO DATA ──────────────────────────────────────
+const NODE_INFO = {
+  center: {
+    title: 'MYCHART AI',
+    sub: 'Intelligence Core',
+    col: '#00e5c4',
+    desc: 'An AI layer built into MyChart that synthesizes data across all connected health networks. Reads patient history, surfaces patterns, flags risks, and drafts chart updates — so physicians spend less time processing and more time acting.',
+    stats: [
+      { label: 'Records Synthesized', val: '500M+' },
+      { label: 'AI Features in Dev', val: '~200' },
+      { label: 'Monthly Draft Notes', val: '1M+' },
+      { label: 'Admin Time Saved', val: '90 min/day' },
+    ],
+    tags: [{ label: 'Epic Native', col: '#00e5c4' }, { label: 'Azure HIPAA', col: '#4a7fff' }, { label: 'FHIR R4', col: '#4a7fff' }],
+  },
+  tefca: {
+    title: 'TEFCA',
+    sub: 'Trusted Exchange Framework & Common Agreement',
+    col: '#4a7fff',
+    desc: 'The federal "network of networks" established by ONC. Enables any health system to query patient records across all connected networks using a single trust agreement — regardless of EHR vendor.',
+    stats: [
+      { label: 'Records Exchanged', val: '500M+' },
+      { label: 'Go-Live', val: 'Jan 2024' },
+      { label: 'Standard', val: 'HL7 FHIR R4' },
+      { label: 'Oversight', val: 'ONC / HHS' },
+    ],
+    tags: [{ label: 'Federal', col: '#4a7fff' }, { label: 'QHIN', col: '#4a7fff' }, { label: 'Interop', col: '#00e5c4' }],
+  },
+  care: {
+    title: 'CAREQUALITY',
+    sub: 'National Interoperability Framework',
+    col: '#4a7fff',
+    desc: 'A private-sector interoperability framework connecting over 1 million care sites. Operates as a trust framework — members agree to standardized data sharing terms, enabling seamless clinical document exchange.',
+    stats: [
+      { label: 'Docs Exchanged / Mo', val: '~1B' },
+      { label: 'Connected Sites', val: '1M+' },
+      { label: 'Networks Connected', val: '70+' },
+      { label: 'Model', val: 'Push + Query' },
+    ],
+    tags: [{ label: 'Private Sector', col: '#4a7fff' }, { label: 'HIE', col: '#4a7fff' }, { label: 'CDA + FHIR', col: '#00e5c4' }],
+  },
+  common: {
+    title: 'COMMONWELL',
+    sub: 'Multi-EHR Health Data Network',
+    col: '#4a7fff',
+    desc: 'Founded by competing EHR vendors to enable patient record sharing across systems. Fully interoperable with Carequality — a patient enrolled in CommonWell can be found by any Carequality-connected provider.',
+    stats: [
+      { label: 'Patient Identities', val: '200M+' },
+      { label: 'EHR Vendors', val: 'Cerner, Athena +' },
+      { label: 'Carequality Link', val: 'Active' },
+      { label: 'Founded', val: '2013' },
+    ],
+    tags: [{ label: 'Vendor-Neutral', col: '#4a7fff' }, { label: 'Patient Matching', col: '#00e5c4' }, { label: 'RestAPI', col: '#4a7fff' }],
+  },
+  direct: {
+    title: 'DIRECT TRUST',
+    sub: 'Secure Point-to-Point Messaging',
+    col: '#4a7fff',
+    desc: 'An encrypted, standards-based messaging protocol for provider-to-provider communication. Used for referrals, discharge summaries, and care transitions — like a HIPAA-compliant email backbone for clinical data.',
+    stats: [
+      { label: 'Active Addresses', val: '2M+' },
+      { label: 'Messages / Year', val: 'Billions' },
+      { label: 'Encryption', val: 'S/MIME' },
+      { label: 'Standard', val: 'RFC 5322' },
+    ],
+    tags: [{ label: 'Encrypted P2P', col: '#4a7fff' }, { label: 'Provider Comms', col: '#00e5c4' }, { label: 'ONC Certified', col: '#4a7fff' }],
+  },
+  epicai: {
+    title: 'EPIC AI',
+    sub: 'Art · Emmie · Penny · Ambient',
+    col: '#6a8fff',
+    desc: "Epic's native AI suite running on Microsoft Azure. Includes Art (clinical documentation), Emmie (patient concierge), Penny (revenue cycle), and ambient dictation via Nuance Dragon. All generative models trained with HIPAA compliance.",
+    stats: [
+      { label: 'AI Features', val: '~200' },
+      { label: 'Training Patients', val: '118M+' },
+      { label: 'Infra', val: 'Azure HIPAA' },
+      { label: 'Draft Notes / Mo', val: '1M+' },
+    ],
+    tags: [{ label: 'Generative AI', col: '#6a8fff' }, { label: 'Cosmos Trained', col: '#00e5c4' }, { label: 'Microsoft Azure', col: '#4a7fff' }],
+  },
+  cosmos: {
+    title: 'COSMOS',
+    sub: 'Epic Research Dataset',
+    col: '#6a8fff',
+    desc: "Epic's de-identified research data pool — the largest single clinical dataset in the world. Powers the CoMET model suite trained on 118M patients and 115B discrete medical events. Used to drive AI risk predictions in MyChart AI.",
+    stats: [
+      { label: 'Patient Records', val: '300M+' },
+      { label: 'CoMET Training Set', val: '118M pts' },
+      { label: 'Medical Events', val: '115B+' },
+      { label: 'Participating Sites', val: '1,000+' },
+    ],
+    tags: [{ label: 'De-identified', col: '#6a8fff' }, { label: 'CoMET', col: '#00e5c4' }, { label: 'Research', col: '#4a7fff' }],
+  },
+};
+
+const nodePopup = document.getElementById('node-popup');
+let popupNode = null;
+
+function openNodePopup(id, mx, my) {
+  const info = NODE_INFO[id];
+  if (!info) return;
+  popupNode = id;
+
+  document.getElementById('np-dot').style.background = info.col;
+  document.getElementById('np-dot').style.boxShadow = `0 0 8px ${info.col}`;
+  document.getElementById('np-title').textContent = info.title;
+  document.getElementById('np-title').style.color = info.col;
+  document.getElementById('np-sub').textContent = info.sub;
+  document.getElementById('np-desc').textContent = info.desc;
+
+  const statsEl = document.getElementById('np-stats');
+  statsEl.innerHTML = info.stats.map(s =>
+    `<div class="np-stat">
+      <span class="np-stat-label">${s.label}</span>
+      <span class="np-stat-val" style="color:${info.col}">${s.val}</span>
+    </div>`
+  ).join('');
+
+  const tagsEl = document.getElementById('np-tags');
+  tagsEl.innerHTML = info.tags.map(t =>
+    `<span class="np-tag" style="color:${t.col};border:1px solid ${t.col}33;background:${t.col}12">${t.label}</span>`
+  ).join('');
+
+  // Zoom canvas so node sits in upper portion, card fills lower area
+  const targetScale = 2.2;
+  const nx = pos[id].x, ny = pos[id].y;
+  // Zoom canvas so node is visible upper-center behind the card
+  cam.tx = W/2 - nx * targetScale;
+  cam.ty = H * 0.28 - ny * targetScale;
+  cam.ts = targetScale;
+
+  document.getElementById('node-popup-backdrop').classList.add('show');
+  nodePopup.classList.add('show');
+}
+
+function closeNodePopup() {
+  nodePopup.classList.remove('show');
+  document.getElementById('node-popup-backdrop').classList.remove('show');
+  popupNode = null;
+  cam.tx = 0; cam.ty = 0; cam.ts = 1;
+}
+
+// ── INTERACTION ────────────────────────────────────────
+function nodeAt(mx,my) {
+  // Map screen coords to world coords
+  const wx = (mx - cam.x) / cam.scale;
+  const wy = (my - cam.y) / cam.scale;
+  for(let i=NODES.length-1;i>=0;i--) {
+    const n=NODES[i];
+    if(n.persona) continue;
+    const {x,y}=pos[n.id], dx=wx-x, dy=wy-y;
+    if(dx*dx+dy*dy<=(n.r+8)*(n.r+8)) return n.id;
+  }
+  return null;
+}
+
+const tip=document.getElementById('tip');
+const tipName=document.getElementById('tip-name');
+const tipBody=document.getElementById('tip-body');
+
+let mouseDownPos = null;
+
+canvas.addEventListener('mousedown',e=>{
+  const id=nodeAt(e.offsetX,e.offsetY);
+  mouseDownPos = { x: e.offsetX, y: e.offsetY };
+  if(id){
+    dragNode=id;
+    dragOx=e.offsetX - pos[id].x*cam.scale - cam.x;
+    dragOy=e.offsetY - pos[id].y*cam.scale - cam.y;
+    canvas.style.cursor='grabbing';
+  }
+});
+canvas.addEventListener('mouseup', e => {
+  if (dragNode && mouseDownPos) {
+    const dx = e.offsetX - mouseDownPos.x, dy = e.offsetY - mouseDownPos.y;
+    const moved = Math.sqrt(dx*dx + dy*dy);
+    if (moved < 5) {
+      const id = nodeAt(e.offsetX, e.offsetY);
+      if (id) openNodePopup(id, e.clientX, e.clientY);
+    }
+  }
+  dragNode=null; mouseDownPos=null; canvas.style.cursor=hovNode?'grab':'default';
+});
+canvas.addEventListener('mousemove',e=>{
+  if(dragNode){
+    pos[dragNode].x=(e.offsetX-cam.x-dragOx)/cam.scale;
+    pos[dragNode].y=(e.offsetY-cam.y-dragOy)/cam.scale;
+    canvas.style.cursor='grabbing';tip.classList.remove('show');return;
+  }
+  const id=nodeAt(e.offsetX,e.offsetY);
+  hovNode=id;
+  if(id){
+    canvas.style.cursor='grab';
+    const n=NODES.find(n=>n.id===id);
+    const cls={ai:'tip-ai',data:'tip-data',doc:'tip-doc',pat:'tip-pat'}[n.type];
+    tipName.className=cls; tipName.textContent=n.lines.join(' ');
+    tipBody.textContent=n.desc;
+    let tx=e.clientX+16,ty=e.clientY-12;
+    if(tx+220>W)tx=e.clientX-234;
+    if(ty+130>H)ty=e.clientY-130;
+    tip.style.left=tx+'px';tip.style.top=ty+'px';
+    tip.classList.add('show');
+  } else { canvas.style.cursor='default'; tip.classList.remove('show'); }
+});
+canvas.addEventListener('mouseleave',()=>{dragNode=null;hovNode=null;tip.classList.remove('show');});
+
+canvas.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  const t=e.touches[0],rect=canvas.getBoundingClientRect();
+  const mx=t.clientX-rect.left,my=t.clientY-rect.top;
+  const id=nodeAt(mx,my);
+  if(id){dragNode=id;dragOx=mx-pos[id].x;dragOy=my-pos[id].y;}
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(!dragNode)return;
+  const t=e.touches[0],rect=canvas.getBoundingClientRect();
+  pos[dragNode].x=t.clientX-rect.left-dragOx;
+  pos[dragNode].y=t.clientY-rect.top-dragOy;
+},{passive:false});
+canvas.addEventListener('touchend',()=>{dragNode=null;});
+</script>
+</body>
+</html>
