@@ -64,6 +64,22 @@ canvas { display: block; position: absolute; inset: 0; }
 .leg { display: flex; align-items: center; gap: .5rem; font-size: .6rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .legdot { width: 5px; height: 5px; border-radius: 50%; }
 
+/* ── ZOOM CONTROLS ── */
+#zoom-controls {
+  position: absolute; bottom: 5.5rem; right: 1.5rem; z-index: 20;
+  display: flex; flex-direction: column; gap: .35rem;
+}
+#zoom-controls button {
+  font-family: var(--mono); font-size: .85rem; line-height: 1;
+  width: 36px; height: 36px; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(8,10,14,.85); color: var(--muted);
+  cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px);
+}
+#zoom-controls button:hover { color: var(--text); background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); }
+
 /* ── TOOLTIP ── */
 #tip {
   position: absolute; pointer-events: none; z-index: 30;
@@ -462,6 +478,12 @@ canvas { display: block; position: absolute; inset: 0; }
 
 <div id="tip"><span id="tip-name"></span><span id="tip-body"></span></div>
 
+<div id="zoom-controls">
+  <button id="zoom-in">+</button>
+  <button id="zoom-reset">⊙</button>
+  <button id="zoom-out">−</button>
+</div>
+
 <div id="modes">
   <button class="mpill on-existing" id="p-ex"  onclick="setMode('existing')">[ EXISTING ]</button>
   <button class="mpill"             id="p-ai"  onclick="setMode('ai')">[ MYCHART AI ]</button>
@@ -805,13 +827,30 @@ const NODES = [
 ];
 
 const INIT_POS = {
-  center:  [.5,  .47], tefca:  [.21, .2 ], care:   [.79, .2 ],
-  common:  [.1,  .5 ], direct: [.9,  .5 ], epicai: [.28, .77],
-  cosmos:  [.72, .77], doctor: [.5,  .1 ], patient:[.5,  .88],
+  center:  [.5,  .47], tefca:  [.22, .22], care:   [.78, .22],
+  common:  [.12, .52], direct: [.88, .52], epicai: [.3,  .75],
+  cosmos:  [.7,  .75], doctor: [.5,  .11], patient:[.5,  .86],
 };
-const pos = {};
-function initPos() { NODES.forEach(n => { if (!pos[n.id]) pos[n.id] = { x: INIT_POS[n.id][0]*W, y: INIT_POS[n.id][1]*H }; }); }
-initPos(); window.addEventListener('resize', () => { pos={}; initPos(); });
+let pos = {};
+function initPos() {
+  NODES.forEach(n => {
+    // Keep nodes away from edges with a safe margin
+    const margin = n.r * 2 + 10;
+    const fx = INIT_POS[n.id][0], fy = INIT_POS[n.id][1];
+    pos[n.id] = {
+      x: Math.max(margin, Math.min(W - margin, fx * W)),
+      y: Math.max(margin, Math.min(H - margin, fy * H))
+    };
+  });
+}
+initPos();
+window.addEventListener('resize', () => {
+  pos = {};
+  initPos();
+  // Reset camera on resize so nothing drifts
+  cam.x = 0; cam.y = 0; cam.scale = 1;
+  cam.tx = 0; cam.ty = 0; cam.ts = 1;
+});
 
 const EDGES = {
   existing:[['center','tefca'],['center','care'],['center','common'],['center','direct'],['center','epicai'],['center','cosmos']],
@@ -1342,6 +1381,8 @@ const tipName=document.getElementById('tip-name');
 const tipBody=document.getElementById('tip-body');
 
 let mouseDownPos = null;
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
 
 canvas.addEventListener('mousedown',e=>{
   const id=nodeAt(e.offsetX,e.offsetY);
@@ -1351,20 +1392,31 @@ canvas.addEventListener('mousedown',e=>{
     dragOx=e.offsetX - pos[id].x*cam.scale - cam.x;
     dragOy=e.offsetY - pos[id].y*cam.scale - cam.y;
     canvas.style.cursor='grabbing';
+  } else {
+    isPanning = true;
+    panStart = { x: e.offsetX - cam.tx, y: e.offsetY - cam.ty };
+    canvas.style.cursor='move';
   }
 });
 canvas.addEventListener('mouseup', e => {
-  if (dragNode && mouseDownPos) {
+  if (!isPanning && dragNode && mouseDownPos) {
     const dx = e.offsetX - mouseDownPos.x, dy = e.offsetY - mouseDownPos.y;
-    const moved = Math.sqrt(dx*dx + dy*dy);
-    if (moved < 5) {
+    if (Math.sqrt(dx*dx + dy*dy) < 5) {
       const id = nodeAt(e.offsetX, e.offsetY);
       if (id) openNodePopup(id, e.clientX, e.clientY);
     }
   }
-  dragNode=null; mouseDownPos=null; canvas.style.cursor=hovNode?'grab':'default';
+  dragNode=null; isPanning=false; mouseDownPos=null;
+  canvas.style.cursor=hovNode?'grab':'default';
 });
 canvas.addEventListener('mousemove',e=>{
+  if(isPanning){
+    cam.tx = e.offsetX - panStart.x;
+    cam.ty = e.offsetY - panStart.y;
+    // Snap camera instantly while panning
+    cam.x = cam.tx; cam.y = cam.ty;
+    canvas.style.cursor='move'; tip.classList.remove('show'); return;
+  }
   if(dragNode){
     pos[dragNode].x=(e.offsetX-cam.x-dragOx)/cam.scale;
     pos[dragNode].y=(e.offsetY-cam.y-dragOy)/cam.scale;
@@ -1387,21 +1439,87 @@ canvas.addEventListener('mousemove',e=>{
 });
 canvas.addEventListener('mouseleave',()=>{dragNode=null;hovNode=null;tip.classList.remove('show');});
 
-canvas.addEventListener('touchstart',e=>{
+// ── SCROLL TO ZOOM ─────────────────────────────────────
+const MIN_SCALE = 0.3, MAX_SCALE = 4;
+function zoomAt(cx, cy, factor) {
+  if (popupNode) return;
+  const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, cam.ts * factor));
+  cam.tx = cx - (cx - cam.tx) * (newScale / cam.ts);
+  cam.ty = cy - (cy - cam.ty) * (newScale / cam.ts);
+  cam.ts = newScale;
+}
+let wheelLock = false;
+canvas.addEventListener('wheel', e => {
   e.preventDefault();
-  const t=e.touches[0],rect=canvas.getBoundingClientRect();
-  const mx=t.clientX-rect.left,my=t.clientY-rect.top;
-  const id=nodeAt(mx,my);
-  if(id){dragNode=id;dragOx=mx-pos[id].x;dragOy=my-pos[id].y;}
-},{passive:false});
-canvas.addEventListener('touchmove',e=>{
+  if (wheelLock) return;
+  wheelLock = true;
+  setTimeout(() => wheelLock = false, 16);
+  zoomAt(e.offsetX, e.offsetY, e.deltaY < 0 ? 1.1 : 0.91);
+}, { passive: false });
+
+// ── PINCH TO ZOOM + TOUCH DRAG ─────────────────────────
+let lastPinchDist = null;
+let touchStartPos = null;
+
+canvas.addEventListener('touchstart', e => {
   e.preventDefault();
-  if(!dragNode)return;
-  const t=e.touches[0],rect=canvas.getBoundingClientRect();
-  pos[dragNode].x=t.clientX-rect.left-dragOx;
-  pos[dragNode].y=t.clientY-rect.top-dragOy;
-},{passive:false});
-canvas.addEventListener('touchend',()=>{dragNode=null;});
+  if (e.touches.length === 2) {
+    lastPinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    dragNode = null;
+  } else {
+    const t = e.touches[0], rect = canvas.getBoundingClientRect();
+    const mx = t.clientX - rect.left, my = t.clientY - rect.top;
+    touchStartPos = { x: mx, y: my };
+    const id = nodeAt(mx, my);
+    if (id) {
+      dragNode = id;
+      dragOx = mx - pos[id].x * cam.scale - cam.x;
+      dragOy = my - pos[id].y * cam.scale - cam.y;
+    }
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 2 && lastPinchDist !== null) {
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const rect = canvas.getBoundingClientRect();
+    const cx = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+    const cy = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+    zoomAt(cx, cy, dist / lastPinchDist);
+    lastPinchDist = dist;
+  } else if (dragNode && e.touches.length === 1) {
+    const t = e.touches[0], rect = canvas.getBoundingClientRect();
+    pos[dragNode].x = (t.clientX - rect.left - cam.x - dragOx) / cam.scale;
+    pos[dragNode].y = (t.clientY - rect.top  - cam.y - dragOy) / cam.scale;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  if (e.touches.length < 2) lastPinchDist = null;
+  // Tap to open popup
+  if (dragNode && touchStartPos && e.changedTouches.length === 1) {
+    const t = e.changedTouches[0], rect = canvas.getBoundingClientRect();
+    const dx = (t.clientX - rect.left) - touchStartPos.x;
+    const dy = (t.clientY - rect.top)  - touchStartPos.y;
+    if (Math.sqrt(dx*dx + dy*dy) < 8) {
+      const id = nodeAt(t.clientX - rect.left, t.clientY - rect.top);
+      if (id) openNodePopup(id);
+    }
+  }
+  dragNode = null; touchStartPos = null;
+});
+
+// ── ZOOM BUTTONS ───────────────────────────────────────
+document.getElementById('zoom-in')   ?.addEventListener('click', () => zoomAt(W/2, H/2, 1.25));
+document.getElementById('zoom-out')  ?.addEventListener('click', () => zoomAt(W/2, H/2, 0.8));
+document.getElementById('zoom-reset')?.addEventListener('click', () => { cam.tx=0; cam.ty=0; cam.ts=1; });
 </script>
 </body>
 </html>
