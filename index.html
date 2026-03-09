@@ -147,259 +147,445 @@ canvas { display: block; position: absolute; inset: 0; }
 #orb-canvas.show { display: block; }
 
 
+/* ══════════════════════════════════════════
+   OVERLAY — DARK AI-NATIVE DESIGN SYSTEM
+══════════════════════════════════════════ */
+
+/* ── Overlay shell ── */
+.overlay {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(96vw, 1080px);
+  height: min(88vh, 680px);
+  background: #080b10;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  z-index: 42;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04);
+  animation: overlayIn .3s cubic-bezier(.34,1.1,.64,1) forwards;
+}
+.overlay.show { display: flex; }
+@keyframes overlayIn {
+  from { opacity:0; transform: translate(-50%,-50%) scale(.97); }
+  to   { opacity:1; transform: translate(-50%,-50%) scale(1); }
+}
+
 /* ── Close button ── */
 .ov-close {
-  position: absolute; top: 1rem; right: 1.25rem;
-  font-size: .7rem; font-weight: 500; letter-spacing: .04em;
-  color: #6b7280; cursor: pointer; border: 1px solid #e5e7eb;
-  background: #fff; border-radius: 6px;
-  padding: .35rem .8rem;
-  transition: all .15s; z-index: 50; font-family: inherit;
-  display: flex; align-items: center; gap: .35rem;
+  position: absolute; top: 1rem; right: 1.1rem;
+  font-size: .65rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(255,255,255,.35); cursor: pointer;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04);
+  border-radius: 5px; padding: .3rem .75rem;
+  transition: all .15s; z-index: 50; font-family: var(--mono);
   line-height: 1;
 }
-.ov-close::before { content: '✕'; font-size: .65rem; }
-.ov-close:hover { color: #111; border-color: #9ca3af; background: #f9fafb; }
+.ov-close:hover { color: #fff; border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.08); }
 
-/* ── Shared header ── */
+/* ── Header ── */
 .ov-header {
   display: flex; align-items: center; gap: 1rem;
-  padding: 1rem 10rem 1rem 1.5rem;
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  padding: .85rem 8rem .85rem 1.4rem;
+  background: rgba(255,255,255,.025);
+  border-bottom: 1px solid rgba(255,255,255,.06);
   flex-shrink: 0;
-  min-height: 64px;
 }
 .ov-eyebrow {
-  font-size: .65rem; font-weight: 600; letter-spacing: .1em;
-  text-transform: uppercase; margin-bottom: .25rem;
+  font-family: var(--mono);
+  font-size: .58rem; font-weight: 600; letter-spacing: .14em;
+  text-transform: uppercase; margin-bottom: .2rem; opacity: .7;
 }
 .ov-title {
-  font-size: 1.05rem; font-weight: 600; color: #111;
-  letter-spacing: -.01em;
+  font-size: 1rem; font-weight: 700; color: #fff;
+  letter-spacing: -.02em;
 }
 .ov-sub {
-  font-size: .72rem; color: #9ca3af; margin-top: .15rem;
-  font-weight: 400;
+  font-family: var(--mono);
+  font-size: .6rem; color: rgba(255,255,255,.3); margin-top: .12rem;
 }
 .ov-badge {
-  font-size: .62rem; font-weight: 600; letter-spacing: .08em;
-  text-transform: uppercase; padding: .25rem .65rem;
+  font-family: var(--mono);
+  font-size: .58rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; padding: .22rem .65rem;
   border-radius: 20px;
 }
-.badge-doc { background: #eff6ff; color: #3b82f6; border: 1px solid #bfdbfe; }
-.badge-pat { background: #fdf4ff; color: #a855f7; border: 1px solid #e9d5ff; }
-.badge-live { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; display: flex; align-items: center; gap: .35rem; }
-.live-dot { width: 5px; height: 5px; border-radius: 50%; background: #16a34a; animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+.badge-doc { background: rgba(0,229,196,.1); color: #00e5c4; border: 1px solid rgba(0,229,196,.25); }
+.badge-pat { background: rgba(167,139,250,.1); color: #a78bfa; border: 1px solid rgba(167,139,250,.25); }
+.badge-live {
+  background: rgba(0,229,196,.08); color: #00e5c4;
+  border: 1px solid rgba(0,229,196,.2);
+  display: flex; align-items: center; gap: .35rem;
+}
+.live-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #00e5c4; box-shadow: 0 0 6px #00e5c4;
+  animation: glow-pulse 2s infinite;
+}
+@keyframes glow-pulse { 0%,100%{opacity:1;box-shadow:0 0 6px #00e5c4;} 50%{opacity:.4;box-shadow:0 0 2px #00e5c4;} }
 
 /* ── Body grid ── */
 .ov-body {
   flex: 1; display: grid; overflow: hidden; min-height: 0;
 }
-#ov-doc .ov-body { grid-template-columns: 280px 1fr 260px; }
-#ov-pat .ov-body { grid-template-columns: 1fr 1fr 280px; }
+#ov-doc .ov-body { grid-template-columns: 270px 1fr 250px; }
+#ov-pat .ov-body { grid-template-columns: 1fr 1fr 270px; }
 
 /* ── Column base ── */
 .ov-col {
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid rgba(255,255,255,.06);
   display: flex; flex-direction: column; overflow: hidden;
-  background: #fff;
+  background: transparent;
 }
 .ov-col:last-child { border-right: none; }
-.ov-col.bg-subtle { background: #f9fafb; }
+.ov-col.bg-subtle { background: rgba(255,255,255,.015); }
 
 .col-head {
-  padding: .75rem 1.25rem;
-  font-size: .65rem; font-weight: 600; letter-spacing: .1em;
-  text-transform: uppercase; color: #9ca3af;
-  border-bottom: 1px solid #f3f4f6;
-  flex-shrink: 0; background: inherit;
+  padding: .65rem 1.2rem;
+  font-family: var(--mono);
+  font-size: .58rem; font-weight: 600; letter-spacing: .13em;
+  text-transform: uppercase; color: rgba(255,255,255,.3);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  flex-shrink: 0;
 }
 
 /* ── Scrollable areas ── */
 .col-scroll {
-  flex: 1; overflow-y: auto; padding: 1rem 1.25rem;
+  flex: 1; overflow-y: auto; padding: 1rem 1.2rem;
 }
-.col-scroll::-webkit-scrollbar { width: 3px; }
-.col-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+.col-scroll::-webkit-scrollbar { width: 2px; }
+.col-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
 
-/* ── Patient strip (doctor view) ── */
+/* ── Patient strip ── */
 .pt-strip {
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid #f3f4f6;
+  padding: .9rem 1.2rem;
+  border-bottom: 1px solid rgba(255,255,255,.06);
   flex-shrink: 0;
 }
-.pt-name { font-size: 1rem; font-weight: 600; color: #111; letter-spacing: -.01em; }
-.pt-meta { font-size: .7rem; color: #9ca3af; margin-top: .2rem; }
-.pt-tags { display: flex; gap: .35rem; margin-top: .6rem; flex-wrap: wrap; }
+.pt-name { font-size: .95rem; font-weight: 700; color: #fff; letter-spacing: -.01em; }
+.pt-meta { font-family: var(--mono); font-size: .62rem; color: rgba(255,255,255,.3); margin-top: .2rem; line-height: 1.6; }
+.pt-tags { display: flex; gap: .3rem; margin-top: .55rem; flex-wrap: wrap; }
 .tag {
-  font-size: .62rem; font-weight: 500; padding: .2rem .55rem;
-  border-radius: 20px; white-space: nowrap;
+  font-family: var(--mono);
+  font-size: .57rem; font-weight: 600; padding: .18rem .5rem;
+  border-radius: 3px; white-space: nowrap; letter-spacing: .06em;
 }
-.tag-warn { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
-.tag-ok   { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
-.tag-info { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
-.tag-grey { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+.tag-warn { background: rgba(251,146,60,.1); color: #fb923c; border: 1px solid rgba(251,146,60,.25); }
+.tag-ok   { background: rgba(0,229,196,.08); color: #00e5c4; border: 1px solid rgba(0,229,196,.2); }
+.tag-info { background: rgba(77,140,255,.1); color: #4d8cff; border: 1px solid rgba(77,140,255,.25); }
 
 /* ── Timeline ── */
-.trow { display: flex; gap: .75rem; padding: .6rem 0; border-bottom: 1px solid #f3f4f6; align-items: flex-start; }
+.trow { display: flex; gap: .7rem; padding: .55rem 0; border-bottom: 1px solid rgba(255,255,255,.04); align-items: flex-start; }
 .trow:last-child { border-bottom: none; }
-.trow-date { font-size: .65rem; font-weight: 500; color: #9ca3af; min-width: 40px; padding-top: 2px; }
+.trow-date { font-family: var(--mono); font-size: .6rem; color: rgba(255,255,255,.25); min-width: 36px; padding-top: 2px; }
 .trow-body { flex: 1; }
 .trow-label {
-  display: inline-block; font-size: .6rem; font-weight: 600; letter-spacing: .06em;
-  text-transform: uppercase; padding: .1rem .4rem; border-radius: 3px; margin-bottom: .25rem;
+  display: inline-block; font-family: var(--mono);
+  font-size: .55rem; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; padding: .1rem .4rem; border-radius: 2px; margin-bottom: .22rem;
 }
-.lbl-ai   { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
-.lbl-lab  { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
-.lbl-rx   { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
-.lbl-note { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
-.trow-text { font-size: .75rem; line-height: 1.55; color: #4b5563; }
+.lbl-ai   { background: rgba(0,229,196,.1); color: #00e5c4; border: 1px solid rgba(0,229,196,.2); }
+.lbl-lab  { background: rgba(77,140,255,.1); color: #4d8cff; border: 1px solid rgba(77,140,255,.2); }
+.lbl-rx   { background: rgba(251,146,60,.1); color: #fb923c; border: 1px solid rgba(251,146,60,.2); }
+.lbl-note { background: rgba(255,255,255,.05); color: rgba(255,255,255,.4); border: 1px solid rgba(255,255,255,.08); }
+.trow-text { font-size: .73rem; line-height: 1.6; color: rgba(255,255,255,.5); }
 
-/* ── AI Draft (doctor col 2) ── */
+/* ── AI Draft column ── */
 .ai-notice {
   display: flex; align-items: center; gap: .6rem;
-  padding: .65rem .9rem; margin-bottom: .85rem;
-  background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;
-  font-size: .7rem; color: #15803d; font-weight: 500;
+  padding: .6rem .9rem; margin-bottom: .85rem;
+  background: rgba(0,229,196,.06);
+  border: 1px solid rgba(0,229,196,.18);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: .63rem; color: #00e5c4; font-weight: 500;
+  letter-spacing: .04em;
 }
-.ai-notice-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; flex-shrink:0; }
+.ai-notice-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #00e5c4; box-shadow: 0 0 8px #00e5c4;
+  animation: glow-pulse 1.8s infinite; flex-shrink:0;
+}
 
-.field-row { margin-bottom: .85rem; }
+/* AI streaming text effect */
+.field-row { margin-bottom: .8rem; }
 .field-lbl {
-  font-size: .63rem; font-weight: 600; letter-spacing: .08em;
-  text-transform: uppercase; color: #9ca3af; margin-bottom: .3rem;
+  font-family: var(--mono);
+  font-size: .58rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: rgba(255,255,255,.28); margin-bottom: .28rem;
 }
 .field-val {
-  font-size: .8rem; line-height: 1.6; color: #1f2937;
-  background: #f9fafb; border: 1px solid #e5e7eb;
+  font-size: .76rem; line-height: 1.65; color: rgba(255,255,255,.7);
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.07);
   border-radius: 6px; padding: .55rem .75rem;
+  position: relative; overflow: hidden;
 }
-.field-val.editable { border-color: #93c5fd; background: #eff6ff; }
-.field-val.alert    { border-color: #fbbf24; background: #fffbeb; color: #92400e; }
-.field-val.success  { border-color: #86efac; background: #f0fdf4; color: #166534; }
+.field-val.editable {
+  border-color: rgba(0,229,196,.2);
+  background: rgba(0,229,196,.03);
+  color: rgba(255,255,255,.82);
+}
+.field-val.alert {
+  border-color: rgba(251,146,60,.3);
+  background: rgba(251,146,60,.05);
+  color: #fb923c;
+}
+.field-val.success {
+  border-color: rgba(0,229,196,.25);
+  background: rgba(0,229,196,.05);
+  color: #00e5c4;
+}
+
+/* Scanning line on AI draft */
+.field-val.editable::after {
+  content: '';
+  position: absolute; left: 0; right: 0;
+  height: 1px; background: linear-gradient(90deg, transparent, rgba(0,229,196,.4), transparent);
+  animation: scan-line 3s ease-in-out infinite;
+  top: 0;
+}
+@keyframes scan-line {
+  0%   { top: 0%; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* Cursor blink on streaming field */
+.stream-cursor::after {
+  content: '▋';
+  color: #00e5c4;
+  animation: blink-cur .7s step-end infinite;
+  font-size: .7em;
+}
+@keyframes blink-cur { 0%,100%{opacity:1;} 50%{opacity:0;} }
 
 .approve-btn {
-  width: 100%; margin-top: .5rem; padding: .65rem;
-  background: #111; color: #fff; border: none; border-radius: 6px;
-  font-size: .75rem; font-weight: 600; letter-spacing: .04em;
-  cursor: pointer; transition: background .15s; font-family: inherit;
+  width: 100%; margin-top: .75rem; padding: .65rem;
+  background: #00e5c4; color: #050608; border: none; border-radius: 6px;
+  font-family: var(--mono); font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer; transition: all .2s;
+  box-shadow: 0 0 20px rgba(0,229,196,.25);
 }
-.approve-btn:hover { background: #1f2937; }
+.approve-btn:hover { background: #00f5d4; box-shadow: 0 0 30px rgba(0,229,196,.4); }
 
 /* ── Vitals ── */
-.v-section { margin-bottom: 1.25rem; }
+.v-section { margin-bottom: 1.2rem; }
 .v-section-title {
-  font-size: .63rem; font-weight: 600; letter-spacing: .08em;
-  text-transform: uppercase; color: #9ca3af;
-  margin-bottom: .5rem; padding-bottom: .35rem;
-  border-bottom: 1px solid #f3f4f6;
+  font-family: var(--mono);
+  font-size: .58rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: rgba(255,255,255,.28);
+  margin-bottom: .5rem; padding-bottom: .3rem;
+  border-bottom: 1px solid rgba(255,255,255,.06);
 }
-.v-row { display: flex; justify-content: space-between; align-items: center; padding: .35rem 0; }
-.v-name { font-size: .75rem; color: #6b7280; }
-.v-val  { font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.v-ok   { color: #16a34a; }
-.v-warn { color: #d97706; }
-.v-crit { color: #dc2626; }
-.v-bar  { height: 3px; background: #f3f4f6; border-radius: 2px; margin-top: .15rem; overflow: hidden; }
+.v-row { display: flex; justify-content: space-between; align-items: center; padding: .32rem 0; }
+.v-name { font-size: .72rem; color: rgba(255,255,255,.45); }
+.v-val  { font-family: var(--mono); font-size: .82rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.v-ok   { color: #00e5c4; }
+.v-warn { color: #fb923c; }
+.v-crit { color: #ff4d5a; }
+.v-bar  { height: 2px; background: rgba(255,255,255,.07); border-radius: 2px; margin-top: .12rem; overflow: hidden; }
 .v-fill { height: 100%; border-radius: 2px; }
 
-/* ── Risk cards ── */
+/* ── AI Risk cards ── */
 .risk-card {
   padding: .65rem .85rem; border-radius: 6px;
-  margin-bottom: .5rem;
+  margin-bottom: .45rem; position: relative; overflow: hidden;
 }
-.risk-hi  { background: #fef2f2; border: 1px solid #fecaca; }
-.risk-med { background: #fffbeb; border: 1px solid #fde68a; }
-.risk-lo  { background: #f0fdf4; border: 1px solid #bbf7d0; }
-.risk-name {
-  font-size: .72rem; font-weight: 600; margin-bottom: .2rem;
-}
-.risk-hi  .risk-name { color: #b91c1c; }
-.risk-med .risk-name { color: #92400e; }
-.risk-lo  .risk-name { color: #166534; }
-.risk-desc { font-size: .72rem; line-height: 1.5; color: #6b7280; }
+.risk-hi  { background: rgba(255,77,90,.07); border: 1px solid rgba(255,77,90,.2); }
+.risk-med { background: rgba(251,146,60,.07); border: 1px solid rgba(251,146,60,.2); }
+.risk-lo  { background: rgba(0,229,196,.05); border: 1px solid rgba(0,229,196,.15); }
 
-/* ══ PATIENT OVERLAY ══ */
-/* Visit summary */
-.visit-card {
-  background: #fdf4ff; border: 1px solid #e9d5ff;
-  border-radius: 8px; padding: .9rem 1rem; margin-bottom: .85rem;
+/* Animated confidence bar inside risk card */
+.risk-card::before {
+  content: attr(data-conf);
+  position: absolute; bottom: 0; left: 0;
+  height: 2px;
+  background: currentColor;
+  animation: conf-fill 1.8s cubic-bezier(.4,0,.2,1) forwards;
 }
-.visit-date { font-size: .63rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #9ca3af; margin-bottom: .3rem; }
-.visit-title { font-size: .9rem; font-weight: 600; color: #111; margin-bottom: .5rem; }
-.visit-body { font-size: .78rem; line-height: 1.7; color: #4b5563; }
-.visit-body strong { color: #111; font-weight: 600; }
+.risk-hi::before  { color: #ff4d5a; width: 68%; }
+.risk-med::before { color: #fb923c; width: 44%; }
+.risk-lo::before  { color: #00e5c4; width: 18%; }
+@keyframes conf-fill { from { transform: scaleX(0); transform-origin: left; } to { transform: scaleX(1); } }
+
+.risk-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .18rem; }
+.risk-name { font-size: .72rem; font-weight: 700; }
+.risk-conf { font-family: var(--mono); font-size: .6rem; font-weight: 600; }
+.risk-hi  .risk-name, .risk-hi  .risk-conf { color: #ff4d5a; }
+.risk-med .risk-name, .risk-med .risk-conf { color: #fb923c; }
+.risk-lo  .risk-name, .risk-lo  .risk-conf { color: #00e5c4; }
+.risk-desc { font-size: .7rem; line-height: 1.5; color: rgba(255,255,255,.4); }
+
+/* ══ PATIENT VIEW ══ */
+.visit-card {
+  background: rgba(167,139,250,.06);
+  border: 1px solid rgba(167,139,250,.18);
+  border-radius: 8px; padding: .9rem 1rem; margin-bottom: .75rem;
+  position: relative; overflow: hidden;
+}
+.visit-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(167,139,250,.5), transparent);
+}
+.visit-date {
+  font-family: var(--mono);
+  font-size: .58rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(255,255,255,.3); margin-bottom: .28rem;
+}
+.visit-title { font-size: .88rem; font-weight: 700; color: #fff; margin-bottom: .45rem; }
+.visit-body { font-size: .75rem; line-height: 1.75; color: rgba(255,255,255,.55); }
+.visit-body strong { color: rgba(255,255,255,.85); font-weight: 600; }
 
 .steps-card {
-  background: #f0fdf4; border: 1px solid #bbf7d0;
+  background: rgba(0,229,196,.04);
+  border: 1px solid rgba(0,229,196,.15);
   border-radius: 8px; padding: .9rem 1rem;
+  position: relative; overflow: hidden;
 }
-.steps-card .visit-date { color: #9ca3af; }
-.steps-card .visit-title { color: #15803d; }
-.steps-card .visit-body { color: #374151; }
+.steps-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,229,196,.4), transparent);
+}
+.steps-card .visit-title { color: #00e5c4; }
+.steps-card .visit-body  { color: rgba(255,255,255,.5); }
 
-/* ── Emmie chat ── */
+/* ── Emmie chat — dark AI native ── */
 .chat-area {
-  flex: 1; overflow-y: auto; padding: .85rem 1.25rem;
-  display: flex; flex-direction: column; gap: .75rem;
-  background: #f9fafb;
+  flex: 1; overflow-y: auto; padding: .85rem 1rem;
+  display: flex; flex-direction: column; gap: .65rem;
+  background: transparent;
 }
-.chat-area::-webkit-scrollbar { width: 3px; }
-.chat-area::-webkit-scrollbar-thumb { background: #e5e7eb; }
-.msg { max-width: 86%; }
+.chat-area::-webkit-scrollbar { width: 2px; }
+.chat-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); }
+
+.msg { max-width: 88%; }
 .msg-ai   { align-self: flex-start; }
 .msg-user { align-self: flex-end; }
+
 .msg-from {
-  font-size: .6rem; font-weight: 600; letter-spacing: .06em;
-  text-transform: uppercase; color: #9ca3af; margin-bottom: .2rem;
+  font-family: var(--mono);
+  font-size: .55rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; margin-bottom: .18rem;
 }
+.msg-ai   .msg-from { color: #a78bfa; }
+.msg-user .msg-from { color: rgba(255,255,255,.3); text-align: right; }
+
 .msg-body {
-  font-size: .78rem; line-height: 1.65;
+  font-size: .76rem; line-height: 1.65;
   padding: .6rem .85rem; border-radius: 10px;
 }
-.msg-ai   .msg-body { background: #fff; border: 1px solid #e9d5ff; color: #374151; border-bottom-left-radius: 3px; }
-.msg-user .msg-body { background: #a855f7; color: #fff; border-bottom-right-radius: 3px; }
-.typing { display: flex; gap: .3rem; align-items: center; padding: .3rem 0; }
-.typing span { width: 6px; height: 6px; border-radius: 50%; background: #c4b5fd; animation: blink 1.2s infinite; }
+.msg-ai   .msg-body {
+  background: rgba(167,139,250,.08);
+  border: 1px solid rgba(167,139,250,.18);
+  color: rgba(255,255,255,.75);
+  border-bottom-left-radius: 3px;
+  position: relative; overflow: hidden;
+}
+/* Shimmer on AI messages */
+.msg-ai .msg-body::after {
+  content: '';
+  position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(167,139,250,.06), transparent);
+  animation: shimmer 4s ease-in-out infinite;
+}
+@keyframes shimmer { 0%{left:-60%;} 100%{left:160%;} }
+
+.msg-user .msg-body {
+  background: rgba(167,139,250,.2);
+  border: 1px solid rgba(167,139,250,.3);
+  color: #fff;
+  border-bottom-right-radius: 3px;
+}
+
+/* Emmie AI label with pulse */
+.emmie-label {
+  display: flex; align-items: center; gap: .4rem; margin-bottom: .18rem;
+}
+.emmie-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: #a78bfa; box-shadow: 0 0 6px #a78bfa;
+  animation: glow-pulse 2s infinite;
+}
+
+.typing { display: flex; gap: .3rem; align-items: center; padding: .25rem 0; }
+.typing span {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #a78bfa; animation: blink 1.2s infinite;
+  box-shadow: 0 0 4px #a78bfa;
+}
 .typing span:nth-child(2) { animation-delay: .2s; }
 .typing span:nth-child(3) { animation-delay: .4s; }
-@keyframes blink { 0%,100%{opacity:.2;} 50%{opacity:1;} }
+@keyframes blink { 0%,100%{opacity:.15;} 50%{opacity:1;} }
+
+/* Token counter on Emmie */
+.emmie-tokens {
+  font-family: var(--mono); font-size: .55rem;
+  color: rgba(167,139,250,.45); letter-spacing: .08em;
+  margin-top: .12rem;
+}
 
 /* ── Care checklist ── */
 .care-scroll {
-  flex: 1; overflow-y: auto; padding: .75rem 1.25rem;
+  flex: 1; overflow-y: auto; padding: .7rem 1.1rem;
 }
-.care-scroll::-webkit-scrollbar { width: 3px; }
-.care-scroll::-webkit-scrollbar-thumb { background: #e5e7eb; }
+.care-scroll::-webkit-scrollbar { width: 2px; }
+.care-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); }
+
 .care-item {
-  display: flex; align-items: flex-start; gap: .85rem;
-  padding: .75rem 0; border-bottom: 1px solid #f3f4f6;
+  display: flex; align-items: flex-start; gap: .8rem;
+  padding: .7rem 0; border-bottom: 1px solid rgba(255,255,255,.05);
 }
 .care-item:last-child { border-bottom: none; }
 .care-icon {
-  width: 32px; height: 32px; border-radius: 8px;
+  width: 30px; height: 30px; border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; margin-top: 1px;
 }
-.care-icon svg { width: 15px; height: 15px; }
-.care-ic-warn { background: #fff7ed; border: 1px solid #fed7aa; }
-.care-ic-ok   { background: #f0fdf4; border: 1px solid #bbf7d0; }
-.care-ic-info { background: #fdf4ff; border: 1px solid #e9d5ff; }
+.care-icon svg { width: 13px; height: 13px; }
+.care-ic-warn { background: rgba(251,146,60,.1); border: 1px solid rgba(251,146,60,.25); }
+.care-ic-ok   { background: rgba(0,229,196,.08); border: 1px solid rgba(0,229,196,.2); }
+.care-ic-info { background: rgba(167,139,250,.08); border: 1px solid rgba(167,139,250,.2); }
 .care-right { flex: 1; }
-.care-title { font-size: .78rem; font-weight: 500; color: #111; margin-bottom: .15rem; }
-.care-sub   { font-size: .72rem; color: #6b7280; line-height: 1.5; }
+.care-title { font-size: .76rem; font-weight: 600; color: rgba(255,255,255,.8); margin-bottom: .12rem; }
+.care-sub   { font-size: .69rem; color: rgba(255,255,255,.35); line-height: 1.55; }
 .care-action {
-  display: inline-block; margin-top: .35rem;
-  font-size: .65rem; font-weight: 600; letter-spacing: .04em;
-  color: #7c3aed; cursor: pointer; text-decoration: none;
+  display: inline-block; margin-top: .32rem;
+  font-family: var(--mono);
+  font-size: .6rem; font-weight: 600; letter-spacing: .06em;
+  color: #a78bfa; cursor: pointer;
 }
-.care-action:hover { text-decoration: underline; }
+.care-action:hover { color: #c4b5fd; }
+
+/* ── AI processing indicator ── */
+.ai-processing {
+  display: flex; align-items: center; gap: .5rem;
+  font-family: var(--mono); font-size: .58rem;
+  color: rgba(0,229,196,.6); letter-spacing: .08em;
+  padding: .4rem .75rem;
+  background: rgba(0,229,196,.04);
+  border: 1px solid rgba(0,229,196,.1);
+  border-radius: 4px;
+  margin-bottom: .65rem;
+}
+.ai-proc-bar {
+  flex: 1; height: 2px; background: rgba(0,229,196,.1); border-radius: 1px; overflow: hidden;
+}
+.ai-proc-fill {
+  height: 100%; background: #00e5c4;
+  animation: proc-fill 2.5s ease-in-out infinite;
+  box-shadow: 0 0 6px #00e5c4;
+}
+@keyframes proc-fill { 0%{width:0%;opacity:.6;} 70%{width:100%;opacity:1;} 100%{width:100%;opacity:.3;} }
 
 @media (max-width: 700px) {
   #ov-doc .ov-body, #ov-pat .ov-body { grid-template-columns: 1fr; overflow-y: auto; }
-  .ov-col { border-right: none; border-bottom: 1px solid #e5e7eb; max-height: 300px; }
+  .ov-col { border-right: none; border-bottom: 1px solid rgba(255,255,255,.06); max-height: 300px; }
 }
 
 /* ── NODE INFO POPUP ── */
@@ -496,16 +682,16 @@ canvas { display: block; position: absolute; inset: 0; }
 
 <!-- ══ DOCTOR OVERLAY ══ -->
 <div class="overlay" id="ov-doc">
-  <button class="ov-close" onclick="closeOverlay()">Close</button>
+  <button class="ov-close" onclick="closeOverlay()">✕ Close</button>
   <div class="ov-header">
     <div>
-      <div class="ov-eyebrow" style="color:#3b82f6">Physician Interface</div>
-      <div class="ov-title">Clinical Dashboard</div>
-      <div class="ov-sub">MyChart AI — Concept Mockup</div>
+      <div class="ov-eyebrow" style="color:#00e5c4">Physician Interface</div>
+      <div class="ov-title">Clinical Intelligence Dashboard</div>
+      <div class="ov-sub">MyChart AI — Concept Mockup · Epic Native</div>
     </div>
     <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center;">
       <span class="ov-badge badge-doc">Doctor View</span>
-      <span class="ov-badge badge-live"><span class="live-dot"></span>Live</span>
+      <span class="ov-badge badge-live"><span class="live-dot"></span>AI Active</span>
     </div>
   </div>
   <div class="ov-body">
@@ -515,7 +701,7 @@ canvas { display: block; position: absolute; inset: 0; }
       <div class="col-head">Patient Record</div>
       <div class="pt-strip">
         <div class="pt-name">Sarah Chen, 54F</div>
-        <div class="pt-meta">MRN 0042817 · DOB Mar 14, 1970 · UC Health Riverside</div>
+        <div class="pt-meta">MRN 0042817 · DOB Mar 14, 1970<br>UC Health Riverside · Room 4B</div>
         <div class="pt-tags">
           <span class="tag tag-warn">Pre-Diabetic</span>
           <span class="tag tag-warn">HTN Stage 1</span>
@@ -523,11 +709,11 @@ canvas { display: block; position: absolute; inset: 0; }
           <span class="tag tag-info">Carequality</span>
         </div>
       </div>
-      <div class="col-head" style="border-top:1px solid #f3f4f6">Visit History</div>
+      <div class="col-head" style="border-top:1px solid rgba(255,255,255,.06)">Visit History</div>
       <div class="col-scroll">
         <div class="trow">
           <div class="trow-date">Today</div>
-          <div class="trow-body"><span class="trow-label lbl-ai">AI Draft</span><div class="trow-text">Annual wellness. Fatigue x 3 weeks, BP 138/88, glucose 118. AI chart draft ready.</div></div>
+          <div class="trow-body"><span class="trow-label lbl-ai">AI Draft</span><div class="trow-text">Annual wellness. Fatigue ×3 weeks, BP 138/88, glucose 118. AI chart draft ready.</div></div>
         </div>
         <div class="trow">
           <div class="trow-date">3 mo</div>
@@ -556,20 +742,24 @@ canvas { display: block; position: absolute; inset: 0; }
     <div class="ov-col bg-subtle">
       <div class="col-head">AI Chart Draft — Review &amp; Approve</div>
       <div class="col-scroll">
+        <div class="ai-processing">
+          <span>MyChart AI · Synthesizing 6 records across 3 networks</span>
+          <div class="ai-proc-bar"><div class="ai-proc-fill"></div></div>
+        </div>
         <div class="ai-notice">
           <span class="ai-notice-dot"></span>
-          MyChart AI · Cosmos + Encounter Context
+          Cosmos + TEFCA + Encounter context · 4 sources merged
         </div>
         <div class="field-row">
           <div class="field-lbl">Chief Complaint</div>
-          <div class="field-val editable">Fatigue, onset 3 weeks, no fever, no weight change. Patient reports poor sleep quality.</div>
+          <div class="field-val editable stream-cursor">Fatigue, onset 3 weeks, no fever, no weight change. Patient reports poor sleep quality.</div>
         </div>
         <div class="field-row">
           <div class="field-lbl">Assessment</div>
           <div class="field-val editable">1. Pre-diabetes (HbA1c 6.2%, trending up 3 consecutive quarters)<br>2. Hypertension Stage 1 — BP above target on current Lisinopril 10mg<br>3. Fatigue — likely multifactorial; rule out thyroid, sleep apnea</div>
         </div>
         <div class="field-row">
-          <div class="field-lbl">AI Pattern Alert</div>
+          <div class="field-lbl">⚡ AI Pattern Alert</div>
           <div class="field-val alert">HbA1c has risen 0.3% over 3 visits. Cosmos model: 68% probability of T2D diagnosis within 18 months without intervention.</div>
         </div>
         <div class="field-row">
@@ -584,46 +774,55 @@ canvas { display: block; position: absolute; inset: 0; }
           <div class="field-lbl">Cross-System Pull</div>
           <div class="field-val success">✓ TEFCA: 4 records &nbsp;·&nbsp; ✓ Carequality: 2 records &nbsp;·&nbsp; ✓ CommonWell: Kaiser merged</div>
         </div>
-        <button class="approve-btn">Approve &amp; Sign Note</button>
+        <button class="approve-btn">Approve &amp; Sign Note →</button>
       </div>
     </div>
 
-    <!-- COL 3: Vitals + Risk -->
+    <!-- COL 3: Vitals + AI Risk -->
     <div class="ov-col">
-      <div class="col-head">Vitals + Risk Flags</div>
+      <div class="col-head">Vitals + AI Risk Model</div>
       <div class="col-scroll">
         <div class="v-section">
           <div class="v-section-title">Today's Vitals</div>
           <div class="v-row"><span class="v-name">Blood Pressure</span><span class="v-val v-warn">138/88</span></div>
-          <div class="v-bar"><div class="v-fill" style="width:72%;background:#f59e0b;"></div></div>
+          <div class="v-bar"><div class="v-fill" style="width:72%;background:#fb923c;box-shadow:0 0 4px #fb923c66;"></div></div>
           <div class="v-row"><span class="v-name">Heart Rate</span><span class="v-val v-ok">74 bpm</span></div>
-          <div class="v-bar"><div class="v-fill" style="width:48%;background:#22c55e;"></div></div>
+          <div class="v-bar"><div class="v-fill" style="width:48%;background:#00e5c4;box-shadow:0 0 4px #00e5c466;"></div></div>
           <div class="v-row"><span class="v-name">Fasting Glucose</span><span class="v-val v-warn">118 mg/dL</span></div>
-          <div class="v-bar"><div class="v-fill" style="width:65%;background:#f59e0b;"></div></div>
+          <div class="v-bar"><div class="v-fill" style="width:65%;background:#fb923c;box-shadow:0 0 4px #fb923c66;"></div></div>
           <div class="v-row"><span class="v-name">BMI</span><span class="v-val v-warn">27.4</span></div>
-          <div class="v-bar"><div class="v-fill" style="width:58%;background:#f59e0b;"></div></div>
+          <div class="v-bar"><div class="v-fill" style="width:58%;background:#fb923c;box-shadow:0 0 4px #fb923c66;"></div></div>
           <div class="v-row"><span class="v-name">SpO₂</span><span class="v-val v-ok">98%</span></div>
-          <div class="v-bar"><div class="v-fill" style="width:92%;background:#22c55e;"></div></div>
+          <div class="v-bar"><div class="v-fill" style="width:92%;background:#00e5c4;box-shadow:0 0 4px #00e5c466;"></div></div>
         </div>
         <div class="v-section">
           <div class="v-section-title">Recent Labs</div>
           <div class="v-row"><span class="v-name">HbA1c</span><span class="v-val v-warn">6.2% ↑</span></div>
           <div class="v-row"><span class="v-name">LDL</span><span class="v-val v-warn">128</span></div>
           <div class="v-row"><span class="v-name">Creatinine</span><span class="v-val v-ok">0.98</span></div>
-          <div class="v-row"><span class="v-name">TSH</span><span class="v-val" style="color:#9ca3af;font-weight:500;">Pending</span></div>
+          <div class="v-row"><span class="v-name">TSH</span><span class="v-val" style="color:rgba(255,255,255,.3);">Pending</span></div>
         </div>
         <div class="v-section">
-          <div class="v-section-title">AI Risk Flags</div>
+          <div class="v-section-title">Cosmos Risk Model</div>
           <div class="risk-card risk-hi">
-            <div class="risk-name">T2 Diabetes Risk</div>
-            <div class="risk-desc">3-visit A1C trend. Cosmos: 68% progression risk in 18 months.</div>
+            <div class="risk-header">
+              <div class="risk-name">T2 Diabetes Risk</div>
+              <div class="risk-conf">68%</div>
+            </div>
+            <div class="risk-desc">3-visit A1C trend. Cosmos: 68% progression within 18 months without intervention.</div>
           </div>
           <div class="risk-card risk-med">
-            <div class="risk-name">Cardiac — Borderline</div>
+            <div class="risk-header">
+              <div class="risk-name">Cardiac — Borderline</div>
+              <div class="risk-conf">44%</div>
+            </div>
             <div class="risk-desc">BP above target 3 consecutive visits. ASCVD 10yr: 12%.</div>
           </div>
           <div class="risk-card risk-lo">
-            <div class="risk-name">Kidney Function — Stable</div>
+            <div class="risk-header">
+              <div class="risk-name">Kidney Function — Stable</div>
+              <div class="risk-conf">18%</div>
+            </div>
             <div class="risk-desc">Creatinine stable. eGFR 78. No flagged decline.</div>
           </div>
         </div>
@@ -635,16 +834,18 @@ canvas { display: block; position: absolute; inset: 0; }
 
 <!-- ══ PATIENT OVERLAY ══ -->
 <div class="overlay" id="ov-pat">
-  <button class="ov-close" onclick="closeOverlay()">Back to Network</button>
+  <button class="ov-close" onclick="closeOverlay()">✕ Close</button>
   <div class="ov-header">
     <div>
-      <div class="ov-eyebrow" style="color:#a855f7">Patient Portal</div>
+      <div class="ov-eyebrow" style="color:#a78bfa">Patient Portal</div>
       <div class="ov-title">MyChart — Sarah's View</div>
-      <div class="ov-sub">MyChart AI — Concept Mockup</div>
+      <div class="ov-sub">MyChart AI — Concept Mockup · Emmie Active</div>
     </div>
     <div style="margin-left:auto;display:flex;gap:.5rem;align-items:center;">
       <span class="ov-badge badge-pat">Patient View</span>
-      <span class="ov-badge badge-live"><span class="live-dot" style="background:#a855f7;box-shadow:0 0 6px #a855f7"></span>Emmie Active</span>
+      <span class="ov-badge badge-live" style="color:#a78bfa;background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.2);">
+        <span class="live-dot" style="background:#a78bfa;box-shadow:0 0 6px #a78bfa"></span>Emmie Active
+      </span>
     </div>
   </div>
   <div class="ov-body">
@@ -663,11 +864,11 @@ canvas { display: block; position: absolute; inset: 0; }
           </div>
         </div>
         <div class="steps-card">
-          <div class="visit-date">Next Steps from Dr. Kim</div>
-          <div class="visit-title">Your Action Items</div>
+          <div class="visit-date">AI-Generated Action Plan</div>
+          <div class="visit-title">Your Next Steps</div>
           <div class="visit-body">
-            1. Get a <strong>thyroid blood test (TSH)</strong> — lab is on the 2nd floor, no appointment needed<br><br>
-            2. A <strong>sleep study referral</strong> is being sent — expect a call within 5 days<br><br>
+            1. Get a <strong>thyroid blood test (TSH)</strong> — lab is on the 2nd floor<br><br>
+            2. A <strong>sleep study referral</strong> is being sent — expect a call in 5 days<br><br>
             3. <strong>Follow-up in 6 weeks</strong> — book online below<br><br>
             4. Consider the <strong>nutritionist referral</strong> — covered by your plan
           </div>
@@ -676,31 +877,46 @@ canvas { display: block; position: absolute; inset: 0; }
     </div>
 
     <!-- COL 2: Emmie chat -->
-    <div class="ov-col" style="background:#f9fafb;">
-      <div class="col-head" style="background:#f9fafb;">Emmie — AI Health Assistant</div>
+    <div class="ov-col bg-subtle">
+      <div class="col-head">Emmie — AI Health Assistant</div>
       <div class="chat-area">
         <div class="msg msg-ai">
-          <div class="msg-from">Emmie</div>
+          <div class="emmie-label">
+            <span class="emmie-dot"></span>
+            <span class="msg-from">Emmie</span>
+          </div>
           <div class="msg-body">Hi Sarah — your visit summary is ready. What would you like to know about today's results?</div>
+          <div class="emmie-tokens">512 tokens · HIPAA-compliant · Epic secure</div>
         </div>
         <div class="msg msg-user">
           <div class="msg-from">You</div>
           <div class="msg-body">What does A1C mean? Should I be worried?</div>
         </div>
         <div class="msg msg-ai">
-          <div class="msg-from">Emmie</div>
+          <div class="emmie-label">
+            <span class="emmie-dot"></span>
+            <span class="msg-from">Emmie</span>
+          </div>
           <div class="msg-body">A1C measures your average blood sugar over 3 months. Yours is 6.2% — normal is below 5.7%, and diabetes starts at 6.5%. You're in between, called pre-diabetes. The good news: it's very reversible with diet changes and, if needed, a low-dose medication.</div>
+          <div class="emmie-tokens">1,024 tokens · Cross-referenced your lab history</div>
         </div>
         <div class="msg msg-user">
           <div class="msg-from">You</div>
           <div class="msg-body">Is Metformin safe?</div>
         </div>
         <div class="msg msg-ai">
-          <div class="msg-from">Emmie</div>
-          <div class="msg-body">Yes — it's one of the most studied diabetes medications and is well-tolerated. Take it with food to avoid stomach upset at first. Given your healthy kidney numbers, you're a good candidate. Dr. Kim will walk you through it at your follow-up.</div>
+          <div class="emmie-label">
+            <span class="emmie-dot"></span>
+            <span class="msg-from">Emmie</span>
+          </div>
+          <div class="msg-body">Yes — it's one of the most studied diabetes medications and is well-tolerated. Take it with food to avoid stomach upset. Given your healthy kidney numbers, you're a good candidate. Dr. Kim will walk you through it at your follow-up.</div>
+          <div class="emmie-tokens">896 tokens · Referenced Creatinine 0.98, eGFR 78</div>
         </div>
         <div class="msg msg-ai">
-          <div class="msg-from">Emmie</div>
+          <div class="emmie-label">
+            <span class="emmie-dot"></span>
+            <span class="msg-from">Emmie</span>
+          </div>
           <div class="msg-body"><div class="typing"><span></span><span></span><span></span></div></div>
         </div>
       </div>
@@ -711,7 +927,7 @@ canvas { display: block; position: absolute; inset: 0; }
       <div class="col-head">Your Care Checklist</div>
       <div class="care-scroll">
         <div class="care-item">
-          <div class="care-icon care-ic-warn"><svg viewBox="0 0 14 14" fill="none" stroke="#c2410c" stroke-width="1.5" stroke-linecap="round"><rect x="5" y="1" width="4" height="3" rx=".5"/><line x1="7" y1="4" x2="7" y2="9"/><circle cx="7" cy="11.5" r="1" fill="#c2410c" stroke="none"/></svg></div>
+          <div class="care-icon care-ic-warn"><svg viewBox="0 0 14 14" fill="none" stroke="#fb923c" stroke-width="1.5" stroke-linecap="round"><rect x="5" y="1" width="4" height="3" rx=".5"/><line x1="7" y1="4" x2="7" y2="9"/><circle cx="7" cy="11.5" r="1" fill="#fb923c" stroke="none"/></svg></div>
           <div class="care-right">
             <div class="care-title">TSH Blood Test — Due Today</div>
             <div class="care-sub">Order placed by Dr. Kim. Lab on the 2nd floor, no appointment needed.</div>
@@ -719,7 +935,7 @@ canvas { display: block; position: absolute; inset: 0; }
           </div>
         </div>
         <div class="care-item">
-          <div class="care-icon care-ic-warn"><svg viewBox="0 0 14 14" fill="none" stroke="#c2410c" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="2.5" width="12" height="10" rx="1"/><line x1="1" y1="6" x2="13" y2="6"/><line x1="4" y1="1" x2="4" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/></svg></div>
+          <div class="care-icon care-ic-warn"><svg viewBox="0 0 14 14" fill="none" stroke="#fb923c" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="2.5" width="12" height="10" rx="1"/><line x1="1" y1="6" x2="13" y2="6"/><line x1="4" y1="1" x2="4" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/></svg></div>
           <div class="care-right">
             <div class="care-title">Follow-up Visit — Book Now</div>
             <div class="care-sub">Dr. Kim requests a 6-week check-in to review labs and medication.</div>
@@ -727,7 +943,7 @@ canvas { display: block; position: absolute; inset: 0; }
           </div>
         </div>
         <div class="care-item">
-          <div class="care-icon care-ic-info"><svg viewBox="0 0 14 14" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><line x1="7" y1="4" x2="7" y2="7.5"/><line x1="7" y1="9.5" x2="7" y2="10"/></svg></div>
+          <div class="care-icon care-ic-info"><svg viewBox="0 0 14 14" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><line x1="7" y1="4" x2="7" y2="7.5"/><line x1="7" y1="9.5" x2="7" y2="10"/></svg></div>
           <div class="care-right">
             <div class="care-title">Sleep Study Referral — Pending</div>
             <div class="care-sub">Sent to UC Health Sleep Center. Expect a call within 5 business days.</div>
@@ -735,7 +951,7 @@ canvas { display: block; position: absolute; inset: 0; }
           </div>
         </div>
         <div class="care-item">
-          <div class="care-icon care-ic-ok"><svg viewBox="0 0 14 14" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="1" width="8" height="12" rx="1"/><line x1="5" y1="5" x2="9" y2="5"/><line x1="5" y1="7.5" x2="9" y2="7.5"/><line x1="5" y1="10" x2="7" y2="10"/></svg></div>
+          <div class="care-icon care-ic-ok"><svg viewBox="0 0 14 14" fill="none" stroke="#00e5c4" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="1" width="8" height="12" rx="1"/><line x1="5" y1="5" x2="9" y2="5"/><line x1="5" y1="7.5" x2="9" y2="7.5"/><line x1="5" y1="10" x2="7" y2="10"/></svg></div>
           <div class="care-right">
             <div class="care-title">Lisinopril 10mg — Active</div>
             <div class="care-sub">Refill due in 14 days. Auto-refill is off.</div>
@@ -743,7 +959,7 @@ canvas { display: block; position: absolute; inset: 0; }
           </div>
         </div>
         <div class="care-item">
-          <div class="care-icon care-ic-info"><svg viewBox="0 0 14 14" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="5" r="2.5"/><path d="M2.5 12.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/></svg></div>
+          <div class="care-icon care-ic-info"><svg viewBox="0 0 14 14" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="5" r="2.5"/><path d="M2.5 12.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/></svg></div>
           <div class="care-right">
             <div class="care-title">Nutritionist Referral Available</div>
             <div class="care-sub">Covered under your Anthem plan. Specializes in pre-diabetes.</div>
@@ -751,19 +967,11 @@ canvas { display: block; position: absolute; inset: 0; }
           </div>
         </div>
         <div class="care-item">
-          <div class="care-icon care-ic-ok"><svg viewBox="0 0 14 14" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round"><path d="M7 1L2 3.5v4c0 2.8 2.2 4.5 5 5 2.8-.5 5-2.2 5-5v-4L7 1z"/><polyline points="4.5,7 6.5,9 9.5,5"/></svg></div>
+          <div class="care-icon care-ic-ok"><svg viewBox="0 0 14 14" fill="none" stroke="#00e5c4" stroke-width="1.5" stroke-linecap="round"><path d="M7 1L2 3.5v4c0 2.8 2.2 4.5 5 5 2.8-.5 5-2.2 5-5v-4L7 1z"/><polyline points="4.5,7 6.5,9 9.5,5"/></svg></div>
           <div class="care-right">
             <div class="care-title">Data Sharing — Active</div>
             <div class="care-sub">Records shared with UC Health, Cedars-Sinai, and Kaiser via TEFCA.</div>
             <span class="care-action">Manage consent →</span>
-          </div>
-        </div>
-        <div class="care-item">
-          <div class="care-icon care-ic-warn"><svg viewBox="0 0 14 14" fill="none" stroke="#c2410c" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><line x1="7" y1="4.5" x2="7" y2="7"/><circle cx="7" cy="9.5" r=".8" fill="#c2410c" stroke="none"/></svg></div>
-          <div class="care-right">
-            <div class="care-title">Mammogram — Overdue</div>
-            <div class="care-sub">Last completed 14 months ago. Recommended annually for your age group.</div>
-            <span class="care-action">Schedule now →</span>
           </div>
         </div>
       </div>
